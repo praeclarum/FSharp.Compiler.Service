@@ -45,7 +45,7 @@ type ViewController (handle:IntPtr) =
                 //let exitCode, output = compiler.Compile [| "fsc"; "--out:" + outPath; codePath |]
                 sw.Stop ()
 
-                printfn "OUTPUT %A in %O" (parsRes) sw.Elapsed
+                printfn "OUTPUT %A in %O " (parsRes) sw.Elapsed
 
                 //for e in output.Errors do
                 //    match e with

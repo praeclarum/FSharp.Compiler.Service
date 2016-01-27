@@ -44,12 +44,13 @@
     <Compile Include="..\..\assemblyinfo\assemblyinfo.shared.fs" Condition="Exists('..\..\assemblyinfo\assemblyinfo.shared.fs')">
       <Link>AssemblyInfo/assemblyinfo.shared.fs</Link>
     </Compile>
-    <Compile Include="FSComp.fs" />
-    <Compile Include="FSIstrings.fs" />
     <EmbeddedResource Include="..\FSStrings.resx">
       <Link>FSStrings.resx</Link>
     </EmbeddedResource>
+    <EmbeddedResource Include="FSComp.resx" />
     <Compile Include="Microsoft.Build.fs" />
+    <Compile Include="FSComp.fs" />
+    <Compile Include="FSIstrings.fs" />
     <Compile Include="..\..\utils\sformat.fsi">
       <Link>ErrorText/sformat.fsi</Link>
     </Compile>
