@@ -17,7 +17,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
+    <DefineConstants>__UNIFIED__;__MOBILE__;__IOS__;DEBUG;NO_DYNAMIC_ASSEMBLY;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <MtouchUseSGen>true</MtouchUseSGen>
@@ -25,9 +25,11 @@
     <PlatformTarget></PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
-    <DefineConstants>NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
+    <DefineConstants>__UNIFIED__;__MOBILE__;__IOS__;NO_DYNAMIC_ASSEMBLY;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <MtouchUseSGen>true</MtouchUseSGen>
@@ -501,12 +503,6 @@
     <Compile Include="..\vs\SimpleServices.fs">
       <Link>Service/SimpleServices.fs</Link>
     </Compile>
-    <Compile Include="..\fsi\fsi.fsi">
-      <Link>Service/fsi.fsi</Link>
-    </Compile>
-    <Compile Include="..\fsi\fsi.fs">
-      <Link>Service/fsi.fs</Link>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -522,6 +518,12 @@
   <ItemGroup>
     <None Include="..\..\absil\ilreflect.fs">
       <Link>AbsIL/ilreflect.fs</Link>
+    </None>
+    <None Include="..\fsi\fsi.fsi">
+      <Link>Service/fsi.fsi</Link>
+    </None>
+    <None Include="..\fsi\fsi.fs">
+      <Link>Service/fsi.fs</Link>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />

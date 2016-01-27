@@ -167,6 +167,7 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
             errors.ToArray(), result
 
+#if !NO_DYNAMIC_ASSEMBLY
         let dynamicAssemblyCreator (debugInfo:bool,tcImportsRef: TcImports option ref, execute: _ option, assemblyBuilderRef: _ option ref) (_tcConfig,ilGlobals,_errorLogger,outfile,_pdbfile,ilxMainModule,_signingInfo) =
 
             // Create an assembly builder
@@ -205,6 +206,7 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
             // Save the result
             assemblyBuilderRef := Some assemblyBuilder
+#endif
             
         let setOutputStreams execute = 
             // Set the output streams, if requested
@@ -282,6 +284,7 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
             let noframework = defaultArg noframework false
             compileFromAsts (ast, assemblyName, outFile, dependencies, noframework, pdbFile, executable, None, None)
 
+#if !NO_DYNAMIC_ASSEMBLY
         member x.CompileToDynamicAssembly (otherFlags: string[], execute: (TextWriter * TextWriter) option)  = 
             setOutputStreams execute
             
@@ -334,3 +337,4 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
                 | Some a ->  Some (a :> System.Reflection.Assembly)
 
             errorsAndWarnings, result, assemblyOpt
+#endif

@@ -99,10 +99,11 @@ module Impl =
     /// Convert an IL type definition accessibility into an F# accessibility
     let getApproxFSharpAccessibilityOfEntity (entity: EntityRef) = 
         match metadataOfTycon entity.Deref with 
+#if EXTENSIONTYPING
         | ProvidedTypeMetadata _info -> 
             // This is an approximation - for generative type providers some type definitions can be private.
             taccessPublic
-
+#endif
         | ILTypeMetadata (_,td) -> 
             match td.Access with 
             | ILTypeDefAccess.Public 
@@ -297,6 +298,7 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
         isResolved() &&
         isArrayTyconRef cenv.g entity
 
+#if EXTENSIONTYPING
     member __.IsProvided  = 
         isResolved() &&
         entity.IsProvided
@@ -312,11 +314,14 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
     member __.IsProvidedAndGenerated  = 
         isResolved() &&
         entity.IsProvidedGeneratedTycon
+#endif
 
     member __.IsClass = 
         isResolved() &&
         match metadataOfTycon entity.Deref with 
+#if EXTENSIONTYPING
         | ProvidedTypeMetadata info -> info.IsClass
+#endif
         | ILTypeMetadata (_,td) -> (td.tdKind = ILTypeDefKind.Class)
         | FSharpOrArrayOrByrefOrTupleOrExnTypeMetadata -> entity.Deref.IsFSharpClassTycon
 
@@ -2046,7 +2051,11 @@ and FSharpAssembly internal (cenv, ccu: CcuThunk) =
     member __.CodeLocation = ccu.SourceCodeDirectory
     member __.FileName = ccu.FileName
     member __.SimpleName = ccu.AssemblyName 
+#if EXTENSIONTYPING
     member __.IsProviderGenerated = ccu.IsProviderGenerated
+#else
+    member __.IsProviderGenerated = false
+#endif
     member __.Contents = FSharpAssemblySignature(cenv, ccu)
                  
     override x.ToString() = x.QualifiedName
