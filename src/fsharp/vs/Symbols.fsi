@@ -167,6 +167,7 @@ and [<Class>] FSharpEntity =
     /// Indicates if the entity is an array type
     member IsArrayType : bool
 
+#if EXTENSIONTYPING
     /// Indicates if the entity is a 'fake' symbol related to a static instantiation of a type provider
     member IsStaticInstantiation : bool
 
@@ -178,6 +179,7 @@ and [<Class>] FSharpEntity =
 
     /// Indicates if the entity is a generated provided type
     member IsProvidedAndGenerated : bool
+#endif
 
     /// Indicates if the entity is an F# module definition
     member IsFSharpModule: bool 
@@ -185,8 +187,10 @@ and [<Class>] FSharpEntity =
     /// Get the generic parameters, possibly including unit-of-measure parameters
     member GenericParameters: IList<FSharpGenericParameter>
 
+#if EXTENSIONTYPING
     /// Get the static parameters for a provided type
     member StaticParameters: IList<FSharpStaticParameter>
+#endif
 
     /// Indicates that a module is compiled to a class with the given mangled name. The mangling is reversed during lookup 
     member HasFSharpModuleSuffix : bool
@@ -475,6 +479,7 @@ and [<Class>] FSharpGenericParameter =
     /// Get the declared or inferred constraints for the type parameter
     member Constraints: IList<FSharpGenericParameterConstraint> 
 
+#if EXTENSIONTYPING
 /// A subtype of FSharpSymbol that represents a static parameter to an F# type provider
 and [<Class>] FSharpStaticParameter = 
 
@@ -497,7 +502,7 @@ and [<Class>] FSharpStaticParameter =
 
     [<System.ObsoleteAttribute("This member is no longer used, use IsOptional instead")>]
     member HasDefaultValue : bool
-
+#endif
 
 /// Represents further information about a member constraint on a generic type parameter
 and [<Class; NoEquality; NoComparison>] 

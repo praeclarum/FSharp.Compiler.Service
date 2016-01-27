@@ -137,6 +137,12 @@ module Impl =
             | Const.Zero      -> None
         | None -> None
             
+    let getILLiteralValue (v : ILFieldInit option) : obj option =
+        #if NO_DYNAMIC_ASSEMBLY
+        None
+        #else
+        v |> Option.map AbstractIL.ILRuntimeWriter.convFieldInit 
+        #endif
 
     type cenv(g:TcGlobals, thisCcu: CcuThunk , tcImports: TcImports) = 
         let amapV = tcImports.GetImportMap()
@@ -685,7 +691,7 @@ and FSharpField(cenv, d: FSharpFieldData)  =
         if isUnresolved() then None else 
         match d.TryRecdField with 
         | Choice1Of2 r -> getLiteralValue r.LiteralValue
-        | Choice2Of2 f -> f.LiteralValue |> Option.map AbstractIL.ILRuntimeWriter.convFieldInit 
+        | Choice2Of2 f -> getILLiteralValue f.LiteralValue
 
     member __.IsVolatile = 
         if isUnresolved() then false else 

@@ -110,6 +110,7 @@ type SimpleSourceCodeServices =
     /// TypeCheck and compile provided AST
     member Compile: ast:ParsedInput list * assemblyName:string * outFile:string * dependencies:string list * ?pdbFile:string * ?executable:bool * ?noframework:bool -> FSharpErrorInfo [] * int
 
+#if !NO_DYNAMIC_ASSEMBLY
     /// Compiles to a dynamic assembly usinng the given flags.  Any source files names 
     /// are resolved via the FileSystem API. An output file name must be given by a -o flag, but this will not
     /// be written - instead a dynamic assembly will be created and loaded.
@@ -121,6 +122,7 @@ type SimpleSourceCodeServices =
 
     /// TypeCheck and compile provided AST
     member CompileToDynamicAssembly: ast:ParsedInput list * assemblyName:string * dependencies:string list * execute:(TextWriter * TextWriter) option * ?debug:bool * ?noframework:bool -> FSharpErrorInfo [] * int * System.Reflection.Assembly option
-            
+#endif
+
     [<System.Obsolete("This method has been renamed to ParseAndCheckScript")>] 
     member TypeCheckScript: filename:string * source:string * otherFlags:string [] -> Async<SimpleCheckFileResults>
