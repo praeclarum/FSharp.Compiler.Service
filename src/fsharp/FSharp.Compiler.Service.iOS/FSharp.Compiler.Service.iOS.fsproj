@@ -11,26 +11,13 @@
     <IPhoneResourcePrefix>Resources</IPhoneResourcePrefix>
     <NoWarn>$(NoWarn);44;62;9</NoWarn>
     <Tailcalls>true</Tailcalls>
-    <DefineConstants>$(DefineConstants);CROSS_PLATFORM_COMPILER</DefineConstants>
-    <DefineConstants Condition="$(TargetFrameworkVersion) == 'v4.5'">$(DefineConstants);FX_ATLEAST_45</DefineConstants>
-    <DefineConstants>$(DefineConstants);FX_NO_GENERIC_WEAKREFERENCE</DefineConstants>
-    <DefineConstants>$(DefineConstants);FX_ATLEAST_40</DefineConstants>
-    <DefineConstants>$(DefineConstants);BE_SECURITY_TRANSPARENT</DefineConstants>
-    <DefineConstants>$(DefineConstants);TYPE_PROVIDER_SECURITY</DefineConstants>
-    <DefineConstants>$(DefineConstants);EXTENSIBLE_DUMPER</DefineConstants>
-    <DefineConstants>$(DefineConstants);INCLUDE_METADATA_WRITER</DefineConstants>
-    <DefineConstants>$(DefineConstants);COMPILER</DefineConstants>
-    <DefineConstants>$(DefineConstants);COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0</DefineConstants>
-  	<DefineConstants>$(DefineConstants);COMPILER_SERVICE</DefineConstants>
-    <DefineConstants>$(DefineConstants);NO_STRONG_NAMES</DefineConstants>
-    <DefineConstants>$(DefineConstants);TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG; $(DefineConstants)</DefineConstants>
+    <DefineConstants>DEBUG;NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <MtouchUseSGen>true</MtouchUseSGen>
@@ -40,6 +27,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
+    <DefineConstants>NO_CONSOLE_OUTPUT_ENCODING;NO_CONSOLE_COLORS;NO_WINDOWS;NO_PDB_WRITER;NO_MDB_WRITER;NO_PDB_READER;NO_STRONG_NAMES;CROSS_PLATFORM_COMPILER;BE_SECURITY_TRANSPARENT;FX_ATLEAST_45;FX_NO_GENERIC_WEAKREFERENCE;FX_ATLEAST_40;COMPILER_SERVICE_ASSUMES_FSHARP_CORE_4_3_0_0;COMPILER_SERVICE;COMPILER;INCLUDE_METADATA_READER;INCLUDE_METADATA_WRITER;EXTENSIBLE_DUMPER;$(DefineConstants)</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
     <MtouchUseSGen>true</MtouchUseSGen>

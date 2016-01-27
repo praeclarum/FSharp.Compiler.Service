@@ -17,7 +17,10 @@ open System.Collections.Generic
 open Internal.Utilities
 open Microsoft.FSharp.Compiler.AbstractIL 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal 
+#if NO_PDB_READER
+#else
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Support 
+#endif
 open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.BinaryConstants 
 open Microsoft.FSharp.Compiler.AbstractIL.IL  
@@ -101,6 +104,9 @@ type BinaryFile() =
     abstract ReadUInt16 : addr:int -> uint16
     abstract CountUtf8String : addr:int -> int
     abstract ReadUTF8String : addr: int -> string
+
+#if NO_WINDOWS
+#else
 
 /// Read file from memory mapped files
 module MemoryMapping = 
@@ -208,6 +214,7 @@ type MemoryMappedFile(hMap: MemoryMapping.HANDLE, start:nativeint) =
         let n = m.CountUtf8String i
         new System.String(NativePtr.ofNativeInt (m.Addr i), 0, n, System.Text.Encoding.UTF8)
 
+#endif
 
 //---------------------------------------------------------------------
 // Read file from memory blocks 
@@ -911,7 +918,11 @@ type ILReaderContext =
   { ilg: ILGlobals;
     dataEndPoints: Lazy<int32 list>;
     sorted: int64;
+#if NO_PDB_READER
+    pdb: obj option;
+#else
     pdb: (PdbReader * (string -> ILSourceDocument)) option;
+#endif
     entryPointToken: TableName * int;
     getNumRows: TableName -> int; 
     textSegmentPhysicalLoc : int32; 
@@ -1449,6 +1460,9 @@ let readBlobHeapAsDouble ctxt vidx = fst (sigptrGetDouble (readBlobHeap ctxt vid
 //        (e) the start of the native resources attached to the binary if any
 // ----------------------------------------------------------------------*)
 
+#if NO_PDB_READER
+let readNativeResources _ctxt = []
+#else
 let readNativeResources ctxt = 
     let nativeResources = 
         if ctxt.nativeResourcesSize = 0x0 || ctxt.nativeResourcesAddr = 0x0 then 
@@ -1457,6 +1471,7 @@ let readNativeResources ctxt =
             [ (lazy (let linkedResource = seekReadBytes ctxt.is (ctxt.anyV2P (ctxt.infile + ": native resources",ctxt.nativeResourcesAddr)) ctxt.nativeResourcesSize
                      unlinkResource ctxt.nativeResourcesAddr linkedResource)) ]
     nativeResources
+#endif
    
 let dataEndPoints ctxtH = 
     lazy
@@ -2867,7 +2882,11 @@ and seekReadTopCode ctxt numtypars (sz:int) start seqpoints =
    let instrs = ibuf.ToArray()
    instrs,rawToLabel, lab2pc, raw2nextLab
 
+#if NO_PDB_READER
+and seekReadMethodRVA ctxt (_idx,nm,_internalcall,noinline,numtypars) rva = 
+#else
 and seekReadMethodRVA ctxt (idx,nm,_internalcall,noinline,numtypars) rva = 
+#endif
   mkMethBodyLazyAux 
    (lazy
      begin 
@@ -2877,6 +2896,9 @@ and seekReadMethodRVA ctxt (idx,nm,_internalcall,noinline,numtypars) rva =
        //    -- an overall range for the method 
        //    -- the sequence points for the method 
        let localPdbInfos, methRangePdbInfo, seqpoints = 
+#if NO_PDB_READER
+           [], None, []
+#else
            match ctxt.pdb with 
            | None -> 
                [], None, []
@@ -2933,6 +2955,7 @@ and seekReadMethodRVA ctxt (idx,nm,_internalcall,noinline,numtypars) rva =
                with e -> 
                    // "* Warning: PDB info for method "+nm+" could not be read and will be ignored: "+e.Message
                    [],None,[]
+#endif // NO_PDB_READER         
        
        let baseRVA = ctxt.anyV2P("method rva",rva)
        // ": reading body of method "+nm+" at rva "+string rva+", phys "+string baseRVA
@@ -3231,6 +3254,8 @@ and seekReadTopExportedTypes ctxt () =
            done;
            List.rev !res)
 
+#if NO_PDB_READER
+#else         
 let getPdbReader opts infile =  
     match opts.pdbPath with 
     | None -> None
@@ -3251,6 +3276,7 @@ let getPdbReader opts infile =
               let docfun url = if tab.ContainsKey url then tab.[url] else failwith ("Document with URL "+url+" not found in list of documents in the PDB file")
               Some (pdbr, docfun)
           with e -> dprintn ("* Warning: PDB file could not be read and will be ignored: "+e.Message); None         
+#endif
       
 //-----------------------------------------------------------------------
 // Crack the binary headers, build a reader context and return the lazy
@@ -3801,7 +3827,11 @@ let rec genOpenBinaryReader infile is opts =
    //-----------------------------------------------------------------------
    // Set up the PDB reader so we can read debug info for methods.
    // ----------------------------------------------------------------------
+#if NO_PDB_READER
+    let pdb = None
+#else
     let pdb = if runningOnMono then None else getPdbReader opts infile
+#endif
 
     let rowAddr (tab:TableName) idx = tablePhysLocations.[tab.Index] + (idx - 1) * tableRowSizes.[tab.Index]
 
@@ -3934,7 +3964,16 @@ let ClosePdbReader pdb =
 #endif
 
 let OpenILModuleReader infile opts = 
-    if IL.runningOnWindows then
+#if NO_WINDOWS
+        let mc = ByteFile(infile |> FileSystem.ReadAllBytesShim)
+        let modul,ilAssemblyRefs,pdb = genOpenBinaryReader infile mc opts
+        { modul = modul; 
+          ilAssemblyRefs = ilAssemblyRefs;
+          dispose = (fun () -> 
+            ClosePdbReader pdb) }
+#else
+   try 
+
         let mmap = MemoryMappedFile.Create infile
         let modul,ilAssemblyRefs,pdb = genOpenBinaryReader infile mmap opts
         { modul = modul; 
@@ -3942,13 +3981,14 @@ let OpenILModuleReader infile opts =
           dispose = (fun () -> 
             mmap.Close();
             ClosePdbReader pdb) }
-    else
+    with _ ->
         let mc = ByteFile(infile |> FileSystem.ReadAllBytesShim)
         let modul,ilAssemblyRefs,pdb = genOpenBinaryReader infile mc opts
         { modul = modul; 
           ilAssemblyRefs = ilAssemblyRefs;
           dispose = (fun () -> 
             ClosePdbReader pdb) }
+#endif
 
 // ++GLOBAL MUTABLE STATE
 let ilModuleReaderCache = 
