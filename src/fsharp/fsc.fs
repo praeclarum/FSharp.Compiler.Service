@@ -1664,7 +1664,10 @@ module StaticLinker =
 
 type SigningInfo = SigningInfo of (* delaysign:*) bool * (*signer:*)  string option * (*container:*) string option
 
-let GetSigner(signingInfo) = 
+let GetSigner(signingInfo : SigningInfo) : ILBinaryWriter.ILStrongNameSigner option = 
+#if NO_STRONG_NAMES
+        None
+#else
         let (SigningInfo(delaysign,signer,container)) = signingInfo
         // REVIEW: favor the container over the key file - C# appears to do this
         if isSome container then
@@ -1681,6 +1684,7 @@ let GetSigner(signingInfo) =
                 with e -> 
                     // Note:: don't use errorR here since we really want to fail and not produce a binary
                     error(Error(FSComp.SR.fscKeyFileCouldNotBeOpened(s),rangeCmdArgs))
+#endif
 
 module FileWriter = 
     let EmitIL (tcConfig:TcConfig, ilGlobals, errorLogger:ErrorLogger, outfile, pdbfile, ilxMainModule, signingInfo:SigningInfo, exiter:Exiter) =
@@ -1771,6 +1775,9 @@ let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, err
 
     // See Bug 735819 
     let lcidFromCodePage = 
+#if NO_CONSOLE_OUTPUT_ENCODING
+        None
+#else
         if (Console.OutputEncoding.CodePage <> 65001) &&
            (Console.OutputEncoding.CodePage <> Thread.CurrentThread.CurrentUICulture.TextInfo.OEMCodePage) &&
            (Console.OutputEncoding.CodePage <> Thread.CurrentThread.CurrentUICulture.TextInfo.ANSICodePage) then
@@ -1778,6 +1785,7 @@ let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, err
                 Some(1033)
         else
             None
+#endif
 
     let tcGlobals,tcImports,frameworkTcImports,generatedCcu,typedAssembly,topAttrs,tcConfig,outfile,pdbfile,assemblyName,errorLogger = 
         GetTcImportsFromCommandLine
@@ -1792,10 +1800,13 @@ let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, err
                     | Some(n) -> Thread.CurrentThread.CurrentUICulture <- new CultureInfo(n)
                     | None -> ()
           
+#if !NO_CONSOLE_OUTPUT_ENCODING
                     if tcConfigB.utf8output then 
                         let prev = Console.OutputEncoding
                         Console.OutputEncoding <- Encoding.UTF8
-                        System.AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> Console.OutputEncoding <- prev)), 
+                        System.AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> Console.OutputEncoding <- prev)
+#endif
+                    ),
              (fun tcConfigB -> 
                     // display the banner text, if necessary
                     if not bannerAlreadyPrinted then 

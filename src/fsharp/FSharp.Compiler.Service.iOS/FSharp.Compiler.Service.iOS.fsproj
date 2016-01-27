@@ -222,9 +222,6 @@
     <Compile Include="..\..\absil\ilwrite.fs">
       <Link>AbsIL/ilwrite.fs</Link>
     </Compile>
-    <Compile Include="..\..\absil\ilreflect.fs">
-      <Link>AbsIL/ilreflect.fs</Link>
-    </Compile>
     <Compile Include="..\..\utils\CompilerLocationUtils.fs">
       <Link>CompilerLocation/CompilerLocationUtils.fs</Link>
     </Compile>
@@ -521,6 +518,11 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\absil\ilreflect.fs">
+      <Link>AbsIL/ilreflect.fs</Link>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />
 </Project>
