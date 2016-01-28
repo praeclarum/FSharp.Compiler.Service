@@ -2519,7 +2519,11 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
                 // If you're building an assembly that references another assembly built for a more recent
                 // framework version, we want to raise a warning
                 elif not(isfslib) && ((v1 = 4us) && (mscorlibMajorVersion < 4)) then
+                    #if __IOS__
+                    ()
+                    #else
                     warning(Error(FSComp.SR.buildMscorlibAndReferencedAssemblyMismatch(filename),m))
+                    #endif
                 else
                     ()
             | _ -> ()
