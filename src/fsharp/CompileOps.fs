@@ -3505,12 +3505,16 @@ let ImportedBinaryReferenceFromDLL (ilModule: ILModuleDef, ilAssemblyRefs) =
                         
             let sigDataReaders = 
                 if List.contains ilShortAssemName externalSigAndOptData then 
-                    let sigFileName = Path.ChangeExtension(filename, "sigdata")
+                    let sigFileName = Path.GetFullPath (Path.ChangeExtension(filename, "sigdata"))
+                    let sigFileNameOther = Path.Combine (Path.GetDirectoryName (Path.GetDirectoryName (sigFileName)), Path.ChangeExtension(Path.GetFileName (filename), "sigdata"))
                     if not sigDataReaders.IsEmpty then 
-                        error(Error(FSComp.SR.buildDidNotExpectSigdataResource(),m));
-                    if not (FileSystem.SafeExists sigFileName)  then 
-                        error(Error(FSComp.SR.buildExpectedSigdataFile(), m));
-                    [ (ilShortAssemName, FileSystem.ReadAllBytesShim sigFileName)]
+                        error(Error(FSComp.SR.buildDidNotExpectSigdataResource(),m))
+                    let goodName =
+                        if (FileSystem.SafeExists sigFileName)  then sigFileName
+                        else
+                            if (FileSystem.SafeExists sigFileNameOther)  then sigFileNameOther
+                            else error(Error(FSComp.SR.buildExpectedSigdataFile(), m))
+                    [ (ilShortAssemName, FileSystem.ReadAllBytesShim goodName)]
                 else
                     sigDataReaders
             sigDataReaders
@@ -3522,12 +3526,16 @@ let ImportedBinaryReferenceFromDLL (ilModule: ILModuleDef, ilAssemblyRefs) =
             // Look for optimization data in a file 
             let optDataReaders = 
                 if List.contains ilShortAssemName externalSigAndOptData then 
-                    let optDataFile = Path.ChangeExtension(filename, "optdata")
+                    let optDataFile = Path.GetFullPath (Path.ChangeExtension(filename, "optdata"))
+                    let optDataFileOther = Path.Combine (Path.GetDirectoryName (Path.GetDirectoryName (optDataFile)), Path.ChangeExtension(Path.GetFileName (filename), "optdata"))
                     if not optDataReaders.IsEmpty then 
-                        error(Error(FSComp.SR.buildDidNotExpectOptDataResource(),m));
-                    if not (FileSystem.SafeExists optDataFile)  then 
-                        error(Error(FSComp.SR.buildExpectedFileAlongSideFSharpCore(optDataFile),m));
-                    [ (ilShortAssemName, (fun () -> FileSystem.ReadAllBytesShim optDataFile))]
+                        error(Error(FSComp.SR.buildDidNotExpectOptDataResource(),m))
+                    let goodName =
+                        if (FileSystem.SafeExists optDataFile)  then optDataFile
+                        else
+                            if (FileSystem.SafeExists optDataFileOther)  then optDataFileOther
+                            else error(Error(FSComp.SR.buildExpectedFileAlongSideFSharpCore(optDataFile),m))
+                    [ (ilShortAssemName, (fun () -> FileSystem.ReadAllBytesShim goodName))]
                 else
                     optDataReaders
             optDataReaders

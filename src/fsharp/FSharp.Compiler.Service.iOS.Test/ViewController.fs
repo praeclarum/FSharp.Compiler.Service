@@ -19,19 +19,20 @@ type ViewController (handle:IntPtr) =
     override x.ViewDidLoad () =
         base.ViewDidLoad ()
         System.Threading.ThreadPool.QueueUserWorkItem (fun _ ->
-            let checker = FSharpChecker.Create(keepAssemblyContents=true)
+            try
+                let checker = FSharpChecker.Create(keepAssemblyContents=true)
 
-            let parseAndCheckSingleFile (input) = 
-                let file = IO.Path.ChangeExtension(System.IO.Path.GetTempFileName(), "fsx")  
-                IO.File.WriteAllText(file, input)
-                // Get context representing a stand-alone (script) file
-                let projOptions = 
-                    checker.GetProjectOptionsFromScript(file, input)
+                let parseAndCheckSingleFile (input) = 
+                    let file = IO.Path.ChangeExtension(System.IO.Path.GetTempFileName(), "fsx")  
+                    IO.File.WriteAllText(file, input)
+                    // Get context representing a stand-alone (script) file
+                    let projOptions = 
+                        checker.GetProjectOptionsFromScript(file, input)
+                        |> Async.RunSynchronously
+
+                    checker.ParseAndCheckProject(projOptions) 
                     |> Async.RunSynchronously
 
-                checker.ParseAndCheckProject(projOptions) 
-                |> Async.RunSynchronously
-            try
                 let sw = new Diagnostics.Stopwatch ()
                 sw.Start ()
                 let docs = Environment.GetFolderPath (Environment.SpecialFolder.MyDocuments)
@@ -41,11 +42,14 @@ type ViewController (handle:IntPtr) =
 
                 let parsRes = parseAndCheckSingleFile (IO.File.ReadAllText (codePath))
 
+                for e in parsRes.Errors do
+                    printfn "CERR: %O" e
+
                 //let compiler = new Microsoft.FSharp.Compiler.SourceCodeServices.
                 //let exitCode, output = compiler.Compile [| "fsc"; "--out:" + outPath; codePath |]
                 sw.Stop ()
 
-                printfn "OUTPUT %A in %O " (parsRes) sw.Elapsed
+                printfn "OUTPUT %A in %O " (parsRes.AssemblyContents.ImplementationFiles) sw.Elapsed
 
                 //for e in output.Errors do
                 //    match e with

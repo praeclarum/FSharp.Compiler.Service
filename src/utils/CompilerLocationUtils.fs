@@ -153,7 +153,10 @@ module internal FSharpEnvironment =
 
     let is32Bit = IntPtr.Size = 4
     
-    let tryRegKey(subKey:string) = 
+    let tryRegKey(subKey:string) : string option = 
+#if NO_WINDOWS
+        None
+#else
 
         if is32Bit then
             let s = GetDefaultRegistryStringValueViaDotNet(subKey)
@@ -178,6 +181,7 @@ module internal FSharpEnvironment =
                 s
 #else
             Get32BitRegistryStringValueViaPInvoke(subKey) 
+#endif
 #endif
                
 
