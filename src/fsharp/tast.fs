@@ -3355,7 +3355,7 @@ and
       TypeForwarders : CcuTypeForwarderTable }
 
 /// Represents a table of .NET CLI type forwarders for an assembly
-and CcuTypeForwarderTable = Map<string[] * string, Lazy<EntityRef>>
+and CcuTypeForwarderTable = Internal.Utilities.Collections.Tagged.Map<(string array * string), Lazy<EntityRef>, ILAssemblyTypeForwarderComparer>
 
 and CcuReference =  string // ILAssemblyRef
 
@@ -3434,7 +3434,7 @@ and CcuThunk =
     member ccu.Contents            = ccu.Deref.Contents
 
     /// The table of type forwarders for this assembly
-    member ccu.TypeForwarders : Map<string[] * string, Lazy<EntityRef>>  = ccu.Deref.TypeForwarders
+    member ccu.TypeForwarders : CcuTypeForwarderTable  = ccu.Deref.TypeForwarders
 
     /// The table of modules and namespaces at the "root" of the assembly
     member ccu.RootModulesAndNamespaces = ccu.Contents.ModuleOrNamespaceType.ModuleAndNamespaceDefinitions

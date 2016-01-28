@@ -282,6 +282,12 @@
     <Compile Include="..\LexFilter.fs">
       <Link>ParserAndUntypedAST/LexFilter.fs</Link>
     </Compile>
+    <Compile Include="..\comparers.fsi">
+      <Link>TypedAST/comparers.fsi</Link>
+    </Compile>
+    <Compile Include="..\comparers.fs">
+      <Link>TypedAST/comparers.fs</Link>
+    </Compile>
     <Compile Include="..\tainted.fsi">
       <Link>TypedAST/tainted.fsi</Link>
     </Compile>

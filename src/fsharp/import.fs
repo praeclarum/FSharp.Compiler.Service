@@ -519,21 +519,23 @@ let ImportILAssemblyTypeDefs (amap, m, auxModLoader, aref, mainmod:ILModuleDef) 
 let ImportILAssemblyTypeForwarders (amap, m, exportedTypes:ILExportedTypesAndForwarders) = 
     // Note 'td' may be in another module or another assembly!
     // Note: it is very important that we call auxModLoader lazily
-    [ //printfn "reading forwarders..." 
-        for exportedType in exportedTypes.AsList do 
-            let ns,n = splitILTypeName exportedType.Name
-            //printfn "found forwarder for %s..." n
-            let tcref = lazy ImportILTypeRefUncached (amap()) m (ILTypeRef.Create(exportedType.ScopeRef,[],exportedType.Name))
-            yield (Array.ofList ns,n),tcref
-            let rec nested (nets:ILNestedExportedTypes) enc = 
-                [ for net in nets.AsList do 
-                    
-                    //printfn "found nested forwarder for %s..." net.Name
-                    let tcref = lazy ImportILTypeRefUncached (amap()) m (ILTypeRef.Create (exportedType.ScopeRef,enc,net.Name))
-                    yield (Array.ofList enc,exportedType.Name),tcref 
-                    yield! nested net.Nested (enc @ [ net.Name ]) ]
-            yield! nested exportedType.Nested (ns@[n]) 
-    ] |> Map.ofList
+    let l =
+        [ //printfn "reading forwarders..." 
+            for exportedType in exportedTypes.AsList do 
+                let ns,n = splitILTypeName exportedType.Name
+                //printfn "found forwarder for %s..." n
+                let tcref = lazy ImportILTypeRefUncached (amap()) m (ILTypeRef.Create(exportedType.ScopeRef,[],exportedType.Name))
+                yield (Array.ofList ns,n),tcref
+                let rec nested (nets:ILNestedExportedTypes) enc = 
+                    [ for net in nets.AsList do 
+                        
+                        //printfn "found nested forwarder for %s..." net.Name
+                        let tcref = lazy ImportILTypeRefUncached (amap()) m (ILTypeRef.Create (exportedType.ScopeRef,enc,net.Name))
+                        yield (Array.ofList enc,exportedType.Name),tcref 
+                        yield! nested net.Nested (enc @ [ net.Name ]) ]
+                yield! nested exportedType.Nested (ns@[n]) 
+        ]
+    CcuTypeForwarderTable.FromList (new ILAssemblyTypeForwarderComparer (), l)
   
 
 /// Import an IL assembly as a new TAST CCU
@@ -562,7 +564,7 @@ let ImportILAssembly(amap:(unit -> ImportMap),m,auxModuleLoader,sref,sourceDir,f
             MemberSignatureEquality= (fun ty1 ty2 -> Tastops.typeEquivAux EraseAll (amap()).g ty1 ty2)
             TypeForwarders = 
                (match ilModule.Manifest with 
-                | None -> Map.empty
+                | None -> CcuTypeForwarderTable.Empty (new ILAssemblyTypeForwarderComparer ())
                 | Some manifest -> ImportILAssemblyTypeForwarders(amap,m,manifest.ExportedTypes)) }
                 
         CcuThunk.Create(nm,ccuData)

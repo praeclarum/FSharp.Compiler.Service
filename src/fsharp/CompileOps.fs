@@ -5076,7 +5076,7 @@ let GetInitialTcState(m,ccuName,tcConfig:TcConfig,tcGlobals,tcImports:TcImports,
                                ILScopeRef=ILScopeRef.Local
                                Contents=ccuType
                                MemberSignatureEquality= (Tastops.typeEquivAux EraseAll tcGlobals)
-                               TypeForwarders=Map.empty })
+                               TypeForwarders=CcuTypeForwarderTable.Empty (new ILAssemblyTypeForwarderComparer ()) })
 
     // OK, is this is the FSharp.Core CCU then fix it up. 
     if tcConfig.compilingFslib then 
