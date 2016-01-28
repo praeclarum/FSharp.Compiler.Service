@@ -43,13 +43,13 @@ type ViewController (handle:IntPtr) =
                 let parsRes = parseAndCheckSingleFile (IO.File.ReadAllText (codePath))
 
                 for e in parsRes.Errors do
-                    printfn "CERR: %O" e
+                    printfn "FS ERROR: %O" e.Message
 
                 //let compiler = new Microsoft.FSharp.Compiler.SourceCodeServices.
                 //let exitCode, output = compiler.Compile [| "fsc"; "--out:" + outPath; codePath |]
                 sw.Stop ()
 
-                printfn "OUTPUT %A in %O " (parsRes.AssemblyContents.ImplementationFiles) sw.Elapsed
+                printfn "OUTPUT %A in %O " (parsRes.AssemblyContents.ImplementationFiles.Head.Declarations) sw.Elapsed
 
                 //for e in output.Errors do
                 //    match e with

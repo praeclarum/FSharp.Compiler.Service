@@ -1578,11 +1578,14 @@ let GetFsiLibraryName () = "FSharp.Compiler.Interactive.Settings"
 //            -- for files given on a command line without --noframework set
 let DefaultBasicReferencesForOutOfProjectSources = 
     [ yield "System"
+
+#if !__IOS__
       yield "System.Xml" 
       yield "System.Runtime.Remoting"
       yield "System.Runtime.Serialization.Formatters.Soap"
       yield "System.Data"
       yield "System.Drawing"
+#endif
       
       // Don't reference System.Core for .NET 2.0 compilations.
       //
@@ -1602,9 +1605,12 @@ let DefaultBasicReferencesForOutOfProjectSources =
 #else
       yield "System.Runtime"
 #endif
+#if !__IOS__
       yield "System.Web"
       yield "System.Web.Services"
-      yield "System.Windows.Forms" ]
+      yield "System.Windows.Forms"
+#endif
+      ]
 
 // Extra implicit references for .NET 4.0
 let DefaultBasicReferencesForOutOfProjectSources40 = 
