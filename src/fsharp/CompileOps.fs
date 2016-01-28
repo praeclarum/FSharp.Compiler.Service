@@ -2499,6 +2499,9 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
 
     // Check that the referenced version of FSharp.Core.dll matches the referenced version of mscorlib.dll 
     let checkFSharpBinaryCompatWithMscorlib filename (ilAssemblyRefs: ILAssemblyRef list) explicitFscoreVersionToCheckOpt m = 
+#if __IOS__
+        ()
+#else
         let isfslib = fileNameOfPath filename = GetFSharpCoreLibraryName() + ".dll"
         match ilAssemblyRefs |> List.tryFind (fun aref -> aref.Name = data.primaryAssembly.Name) with 
         | Some aref ->
@@ -2519,16 +2522,12 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
                 // If you're building an assembly that references another assembly built for a more recent
                 // framework version, we want to raise a warning
                 elif not(isfslib) && ((v1 = 4us) && (mscorlibMajorVersion < 4)) then
-                    #if __IOS__
-                    ()
-                    #else
                     warning(Error(FSComp.SR.buildMscorlibAndReferencedAssemblyMismatch(filename),m))
-                    #endif
                 else
                     ()
             | _ -> ()
         | _ -> ()
-
+#endif
     // Look for an explicit reference to FSharp.Core and use that to compute fsharpBinariesDir
     let fsharpBinariesDirValue = 
         match fslibExplicitFilenameOpt with
