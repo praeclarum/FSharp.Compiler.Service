@@ -299,7 +299,8 @@ let GetTcImportsFromCommandLine
          optimizeForMemory : bool,
          exiter : Exiter,
          errorLoggerProvider : ErrorLoggerProvider,
-         disposables : DisposablesTracker) =
+         disposables : DisposablesTracker,
+         cancellationToken : CancellationToken) =
 
     let tcConfigB = TcConfigBuilder.CreateNew(defaultFSharpBinariesDir, optimizeForMemory, directoryBuildingFrom, isInteractive=false, isInvalidationSupported=false)
     // Preset: --optimize+ -g --tailcalls+ (see 4505)
@@ -382,6 +383,7 @@ let GetTcImportsFromCommandLine
     disposables.Register frameworkTcImports
 
     // step - parse sourceFiles 
+    cancellationToken.ThrowIfCancellationRequested ()
     ReportTime tcConfig "Parse inputs"
     use unwindParsePhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Parse)            
     let inputs =
@@ -424,6 +426,7 @@ let GetTcImportsFromCommandLine
 
     if tcConfig.importAllReferencesOnly then exiter.Exit 0 
 
+    cancellationToken.ThrowIfCancellationRequested ()
     ReportTime tcConfig "Typecheck"
     use unwindParsePhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.TypeCheck)            
     let tcEnv0 = GetInitialTcEnv (Some assemblyName, rangeStartup, tcConfig, tcImports, tcGlobals)
@@ -1814,14 +1817,16 @@ let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, err
              false, // optimizeForMemory - fsc.exe can use as much memory as it likes to try to compile as fast as possible
              exiter,
              errorLoggerProvider,
-             disposables)
+             disposables,
+             cancellationToken)
 
     tcGlobals,tcImports,frameworkTcImports,generatedCcu,typedAssembly,topAttrs,tcConfig,outfile,pdbfile,assemblyName,errorLogger,exiter,cancellationToken
 
 let main1(tcGlobals, tcImports: TcImports, frameworkTcImports, generatedCcu, typedAssembly, topAttrs, tcConfig: TcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter: Exiter, cancellationToken : CancellationToken) =
 
     if tcConfig.typeCheckOnly then exiter.Exit 0
-    
+
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.CodeGen)
     let signingInfo = ValidateKeySigningAttributes (tcConfig, tcGlobals, topAttrs)
     
@@ -1849,17 +1854,21 @@ let main1(tcGlobals, tcImports: TcImports, frameworkTcImports, generatedCcu, typ
 
     // write interface, xmldoc
     begin
+      cancellationToken.ThrowIfCancellationRequested ()
       ReportTime tcConfig ("Write Interface File");
       use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Output)    
       if tcConfig.printSignature   then InterfaceFileWriter.WriteInterfaceFile (tcGlobals,tcConfig, InfoReader(tcGlobals,tcImports.GetImportMap()), typedAssembly);
+      cancellationToken.ThrowIfCancellationRequested ()
       ReportTime tcConfig ("Write XML document signatures")
       if tcConfig.xmlDocOutputFile.IsSome then 
           XmlDocWriter.computeXmlDocSigs (tcGlobals,generatedCcu) 
+      cancellationToken.ThrowIfCancellationRequested ()
       ReportTime tcConfig ("Write XML docs");
       tcConfig.xmlDocOutputFile |> Option.iter ( fun xmlFile -> 
           let xmlFile = tcConfig.MakePathAbsolute xmlFile
           XmlDocWriter.writeXmlDoc (assemblyName,generatedCcu,xmlFile)
         )
+      cancellationToken.ThrowIfCancellationRequested ()
       ReportTime tcConfig ("Write HTML docs");
     end;
 
@@ -1901,6 +1910,7 @@ let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dl
     let sysRes,otherRes,knownUnresolved = TcAssemblyResolutions.SplitNonFoundationalResolutions(tcConfig)
     let tcGlobals,frameworkTcImports = TcImports.BuildFrameworkTcImports (foundationalTcConfigP, sysRes, otherRes)
 
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindParsePhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Parse) 
 
     let meta = Directory.GetCurrentDirectory()
@@ -1911,6 +1921,7 @@ let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dl
         let tcImports = TcImports.BuildNonFrameworkTcImports(tcConfigP,tcGlobals,frameworkTcImports,otherRes,knownUnresolved)
         tcGlobals,tcImports
 
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindParsePhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.TypeCheck)            
     let tcEnv0 = GetInitialTcEnv (Some assemblyName, rangeStartup, tcConfig, tcImports, tcGlobals)
 
@@ -1919,6 +1930,7 @@ let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dl
 
     let generatedCcu = tcState.Ccu
 
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.CodeGen)
     let signingInfo = ValidateKeySigningAttributes (tcConfig, tcGlobals, topAttrs)
 
@@ -1953,6 +1965,7 @@ let main2(Args(tcConfig, tcImports, frameworkTcImports: TcImports, tcGlobals, er
     if !progress && tcConfig.optSettings.jitOptUser = Some false then 
         dprintf "Note, optimizations are off.\n";
     (* optimize *)
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Optimize)
     
     let optEnv0 = GetInitialOptimizationEnv (tcImports, tcGlobals)
@@ -2004,6 +2017,7 @@ let main2b (tcImportsCapture,dynamicAssemblyCreator) (Args(tcConfig:TcConfig, tc
         error(Error(FSComp.SR.fscQuotationLiteralsStaticLinking0(),rangeStartup));  
     let staticLinker = StaticLinker.StaticLink (tcConfig,tcImports,ilGlobals)
 
+    cancellationToken.ThrowIfCancellationRequested ()
     ReportTime tcConfig "TAST -> ILX";
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind  (BuildPhase.IlxGen)
     let ilxGenerator = CreateIlxAssemblyGenerator (tcConfig,tcImports,tcGlobals, (LightweightTcValForUsingInBuildMethodCall tcGlobals), generatedCcu)
@@ -2032,7 +2046,7 @@ let main2b (tcImportsCapture,dynamicAssemblyCreator) (Args(tcConfig:TcConfig, tc
     Args (tcConfig,errorLogger,staticLinker,ilGlobals,outfile,pdbfile,ilxMainModule,signingInfo,exiter,cancellationToken)
 
 let main2c(Args(tcConfig, errorLogger, staticLinker, ilGlobals, outfile, pdbfile, ilxMainModule, signingInfo, exiter: Exiter, cancellationToken : CancellationToken)) = 
-      
+    cancellationToken.ThrowIfCancellationRequested ()
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.IlGen)
     
     ReportTime tcConfig "ILX -> IL (Unions)"; 
@@ -2058,6 +2072,7 @@ let main3(Args(tcConfig, errorLogger: ErrorLogger, staticLinker, ilGlobals, ilxM
     Args (tcConfig,errorLogger,ilGlobals,ilxMainModule,outfile,pdbfile,signingInfo,exiter,cancellationToken)
 
 let main4 dynamicAssemblyCreator (Args(tcConfig, errorLogger:ErrorLogger, ilGlobals, ilxMainModule, outfile, pdbfile, signingInfo, exiter, cancellationToken : CancellationToken)) = 
+    cancellationToken.ThrowIfCancellationRequested ()
     ReportTime tcConfig "Write .NET Binary"
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Output)    
     let outfile = tcConfig.MakePathAbsolute outfile

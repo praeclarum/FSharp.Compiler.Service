@@ -30,7 +30,7 @@ type ViewController (handle:IntPtr) =
                         checker.GetProjectOptionsFromScript(file, input)
                         |> Async.RunSynchronously
 
-                    checker.ParseAndCheckProject(projOptions) 
+                    checker.ParseAndCheckProject(projOptions, System.Threading.CancellationToken.None) 
                     |> Async.RunSynchronously
 
                 let sw = new Diagnostics.Stopwatch ()

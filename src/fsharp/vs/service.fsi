@@ -410,7 +410,7 @@ type FSharpChecker =
     /// <param name="filename">The filename for the file.</param>
     /// <param name="source">The full source for the file.</param>
     /// <param name="options">The options for the project or script, used to determine active --define conditionals and other options relevant to parsing.</param>
-    member ParseFileInProject : filename: string * source: string * options: FSharpProjectOptions -> Async<FSharpParseFileResults>
+    member ParseFileInProject : filename: string * source: string * options: FSharpProjectOptions * cancellationToken : System.Threading.CancellationToken -> Async<FSharpParseFileResults>
 
     /// <summary>
     /// <para>Check a source code file, returning a handle to the results of the parse including
@@ -497,7 +497,7 @@ type FSharpChecker =
     ///     can be used to marginally increase accuracy of intellisense results in some situations.
     /// </param>
     ///
-    member ParseAndCheckFileInProject : filename: string * fileversion: int * source: string * options: FSharpProjectOptions * ?isResultObsolete: IsResultObsolete * ?textSnapshotInfo: obj -> Async<FSharpParseFileResults * FSharpCheckFileAnswer>
+    member ParseAndCheckFileInProject : filename: string * fileversion: int * source: string * options: FSharpProjectOptions * cancellationToken : System.Threading.CancellationToken * ?isResultObsolete: IsResultObsolete * ?textSnapshotInfo: obj -> Async<FSharpParseFileResults * FSharpCheckFileAnswer>
 
     /// <summary>
     /// <para>Parse and typecheck all files in a project.</para>
@@ -505,7 +505,7 @@ type FSharpChecker =
     /// </summary>
     ///
     /// <param name="options">The options for the project or script.</param>
-    member ParseAndCheckProject : options: FSharpProjectOptions -> Async<FSharpCheckProjectResults>
+    member ParseAndCheckProject : options: FSharpProjectOptions * cancellationToken : System.Threading.CancellationToken -> Async<FSharpCheckProjectResults>
 
     /// <summary>
     /// <para>For a given script file, get the FSharpProjectOptions implied by the #load closure.</para>
@@ -668,7 +668,7 @@ type FSharpChecker =
     member GetCheckOptionsFromScriptRoot : filename : string * source : string * loadedTimeStamp : DateTime * otherFlags: string[] -> FSharpProjectOptions
 
     [<Obsolete("This member has been renamed to ParseFileInProject")>]
-    member UntypedParse : filename: string * source: string * options: FSharpProjectOptions -> FSharpParseFileResults        
+    member UntypedParse : filename: string * source: string * options: FSharpProjectOptions * cancellationToken : System.Threading.CancellationToken -> FSharpParseFileResults        
 
     [<Obsolete("This member has been renamed to CheckFileInProjectIfReady")>]
     member TypeCheckSource : parsed: FSharpParseFileResults * filename: string * fileversion: int * source: string * options: FSharpProjectOptions * isResultObsolete: IsResultObsolete * textSnapshotInfo: obj -> FSharpCheckFileAnswer option

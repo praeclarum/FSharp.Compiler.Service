@@ -98,11 +98,11 @@ type SimpleSourceCodeServices =
 
     /// For errors, quick info, goto-definition, declaration list intellisense, method overload intellisense
     [<System.Obsolete("This method has been deprecated. Use the SourceCodeServices API directly. See http://fsharp.github.io/FSharp.Compiler.Service/symbols.html")>] 
-    member ParseAndCheckScript: filename:string * source:string * ?otherFlags:string [] -> Async<SimpleCheckFileResults>
+    member ParseAndCheckScript: filename:string * source:string * cancellationToken : System.Threading.CancellationToken * ?otherFlags:string [] -> Async<SimpleCheckFileResults>
 
     /// For analysis of a project
     [<System.Obsolete("This method has been deprecated. Use the SourceCodeServices API directly. see http://fsharp.github.io/FSharp.Compiler.Service/project.html")>] 
-    member ParseAndCheckProject: projectFileName:string * argv:string [] -> Async<FSharpCheckProjectResults>
+    member ParseAndCheckProject: projectFileName:string * argv:string [] * cancellationToken : System.Threading.CancellationToken -> Async<FSharpCheckProjectResults>
 
     /// Compile using the given flags.  Source files names are resolved via the FileSystem API. The output file must be given by a -o flag. 
     member Compile: argv:string [] * cancellationToken : System.Threading.CancellationToken -> FSharpErrorInfo [] * int
@@ -125,4 +125,4 @@ type SimpleSourceCodeServices =
 #endif
 
     [<System.Obsolete("This method has been renamed to ParseAndCheckScript")>] 
-    member TypeCheckScript: filename:string * source:string * otherFlags:string [] -> Async<SimpleCheckFileResults>
+    member TypeCheckScript: filename:string * source:string * cancellationToken : System.Threading.CancellationToken * otherFlags:string [] -> Async<SimpleCheckFileResults>

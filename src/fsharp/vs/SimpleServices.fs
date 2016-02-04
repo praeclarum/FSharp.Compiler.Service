@@ -258,25 +258,25 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
             } |> Async.RunSynchronously
 
         [<System.Obsolete("This method has been renamed to ParseAndCheckScript")>]
-        member x.TypeCheckScript (filename, source, otherFlags) = 
-            x.ParseAndCheckScript (filename, source, otherFlags) 
+        member x.TypeCheckScript (filename, source, cancellationToken : System.Threading.CancellationToken, otherFlags) = 
+            x.ParseAndCheckScript (filename, source, cancellationToken, otherFlags) 
 
         /// For errors, quick info, goto-definition, declaration list intellisense, method overload intellisense
-        member x.ParseAndCheckScript (filename, source, ?otherFlags) = 
+        member x.ParseAndCheckScript (filename, source, cancellationToken, ?otherFlags) = 
           async { 
             let! options = checker.GetProjectOptionsFromScript(filename, source, loadTime, ?otherFlags=otherFlags)
             // do an typecheck
             let textSnapshotInfo = "" // TODO
-            let! parseResults, checkResults = checker.ParseAndCheckFileInProject(filename, fileversion, source, options, IsResultObsolete (fun _ -> false), textSnapshotInfo) 
+            let! parseResults, checkResults = checker.ParseAndCheckFileInProject(filename, fileversion, source, options, cancellationToken, IsResultObsolete (fun _ -> false), textSnapshotInfo) 
             // return the info
             match checkResults with 
             | CheckFileAnswer.Aborted -> return! invalidOp "aborted"
             | CheckFileAnswer.Succeeded res -> return SimpleCheckFileResults(parseResults, res, source.Split('\n'))
           }
 
-        member x.ParseAndCheckProject (projectFileName, argv:string[]) = 
+        member x.ParseAndCheckProject (projectFileName, argv:string[], cancellationToken) = 
             let options = checker.GetProjectOptionsFromCommandLineArgs(projectFileName, argv)
-            checker.ParseAndCheckProject(options)
+            checker.ParseAndCheckProject(options, cancellationToken)
 
         member x.Compile (argv: string[], cancellationToken : CancellationToken)  = 
             compileFromArgs (argv, None, None, cancellationToken)

@@ -2351,7 +2351,7 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
             bc.CheckProjectInBackground(options)   
 
     /// Parses the source file and returns untyped AST
-    member bc.ParseFileInProject(filename:string, source,options:FSharpProjectOptions) =
+    member bc.ParseFileInProject(filename:string, source,options:FSharpProjectOptions,cancellationToken : System.Threading.CancellationToken) =
         match locked (fun () -> parseFileInProjectCache.TryGet (filename, source, options)) with 
         | Some parseResults -> async.Return parseResults
         | None -> 
@@ -2361,7 +2361,7 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
         | Some (parseResults, _checkResults,_) ->  async.Return parseResults
         | _ -> 
         reactor.EnqueueAndAwaitOpAsync("ParseFileInProject " + filename, fun _ct -> 
-        
+            cancellationToken.ThrowIfCancellationRequested ()
             // Try the caches again - it may have been filled by the time this operation runs
             match locked (fun () -> parseFileInProjectCache.TryGet (filename, source, options)) with 
             | Some parseResults -> parseResults
@@ -2466,7 +2466,7 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
         ) 
 
     /// Parses the source file and returns untyped AST
-    member bc.ParseAndCheckFileInProject(filename:string, fileVersion, source, options:FSharpProjectOptions,isResultObsolete,textSnapshotInfo) =
+    member bc.ParseAndCheckFileInProject(filename:string, fileVersion, source, options:FSharpProjectOptions,isResultObsolete,textSnapshotInfo,cancellationToken : System.Threading.CancellationToken) =
         reactor.EnqueueAndAwaitOpAsync("ParseAndCheckFileInProject " + filename, fun _ct -> 
             let builderOpt,creationErrors,_ = getOrCreateBuilder options // Q: Whis it it ok to ignore creationErrors in the build cache? A: These errors will be appended into the typecheck results
             match builderOpt with
@@ -2474,6 +2474,8 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
                 let parseResults = FSharpParseFileResults(List.toArray creationErrors, None, true, [])
                 (parseResults, FSharpCheckFileAnswer.Aborted)
             | Some builder -> 
+
+                cancellationToken.ThrowIfCancellationRequested ()
 
                 // Check the cache. We can only use cached results when there is no work to do to bring the background builder up-to-date
                 let cachedResults = locked (fun () -> parseAndCheckFileInProjectCache.TryGet((filename,source,options)))
@@ -2483,11 +2485,16 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
                 | _ -> 
                 let tcPrior = builder.GetCheckResultsBeforeFileInProject filename 
 
+                cancellationToken.ThrowIfCancellationRequested ()
+
                 // Do the parsing.
                 let parseErrors, _matchPairs, inputOpt, anyErrors = Parser.ParseOneFile (source, false, true, filename, builder.ProjectFileNames, builder.TcConfig)
                  
                 let parseResults = FSharpParseFileResults(parseErrors, inputOpt, anyErrors, builder.Dependencies)
                 let loadClosure = scriptClosureCache.TryGet options 
+
+                cancellationToken.ThrowIfCancellationRequested ()
+
                 let tcErrors, tcFileResult = 
                     Parser.TypeCheckOneFile(parseResults,source,filename,options.ProjectFileName,tcPrior.TcConfig,tcPrior.TcGlobals,tcPrior.TcImports,  tcPrior.TcState,
                                             loadClosure,tcPrior.Errors,reactorOps,(fun () -> builder.IsAlive),isResultObsolete,textSnapshotInfo)
@@ -2549,7 +2556,7 @@ type BackgroundCompiler(projectCacheSize, keepAssemblyContents, keepAllBackgroun
         | Some builder -> Some (builder.GetLogicalTimeStampForProject())
 
     /// Parse and typecheck the whole project.
-    member bc.ParseAndCheckProject(options) =
+    member bc.ParseAndCheckProject(options, cancellationToken : System.Threading.CancellationToken) =
         reactor.EnqueueAndAwaitOpAsync("ParseAndCheckProject " + options.ProjectFileName, fun _ct -> bc.ParseAndCheckProjectImpl(options))
 
     member bc.GetProjectOptionsFromScript(filename, source, ?loadedTimeStamp, ?otherFlags, ?useFsiAuxLib) = 
@@ -2707,9 +2714,9 @@ type FSharpChecker(projectCacheSize, keepAssemblyContents, keepAllBackgroundReso
                 return res 
          }
 
-    member ic.ParseFileInProject(filename, source, options) =
+    member ic.ParseFileInProject(filename, source, options, cancellationToken) =
         ic.CheckMaxMemoryReached()
-        backgroundCompiler.ParseFileInProject(filename, source, options)
+        backgroundCompiler.ParseFileInProject(filename, source, options, cancellationToken)
         
     member ic.GetBackgroundParseResultsForFileInProject (filename,options) =
         backgroundCompiler.GetBackgroundParseResultsForFileInProject(filename,options)
@@ -2775,14 +2782,14 @@ type FSharpChecker(projectCacheSize, keepAssemblyContents, keepAllBackgroundReso
             
     /// Typecheck a source code file, returning a handle to the results of the 
     /// parse including the reconstructed types in the file.
-    member ic.ParseAndCheckFileInProject(filename:string, fileVersion:int, source:string, options:FSharpProjectOptions, ?isResultObsolete, ?textSnapshotInfo:obj) =        
+    member ic.ParseAndCheckFileInProject(filename:string, fileVersion:int, source:string, options:FSharpProjectOptions, cancellationToken, ?isResultObsolete, ?textSnapshotInfo:obj) =        
         let (IsResultObsolete(isResultObsolete)) = defaultArg isResultObsolete (IsResultObsolete(fun _ -> false))
         ic.CheckMaxMemoryReached()
-        backgroundCompiler.ParseAndCheckFileInProject(filename, fileVersion, source, options, isResultObsolete, textSnapshotInfo)
+        backgroundCompiler.ParseAndCheckFileInProject(filename, fileVersion, source, options, isResultObsolete, textSnapshotInfo, cancellationToken)
             
-    member ic.ParseAndCheckProject(options) =
+    member ic.ParseAndCheckProject(options, cancellationToken : System.Threading.CancellationToken) =
         ic.CheckMaxMemoryReached()
-        backgroundCompiler.ParseAndCheckProject(options)
+        backgroundCompiler.ParseAndCheckProject(options, cancellationToken)
 
     /// For a given script file, get the ProjectOptions implied by the #load closure
     member ic.GetProjectOptionsFromScript(filename, source, ?loadedTimeStamp, ?otherFlags, ?useFsiAuxLib) = 
@@ -2842,8 +2849,8 @@ type FSharpChecker(projectCacheSize, keepAssemblyContents, keepAllBackgroundReso
         |> Async.RunSynchronously
         |> Array.map (fun (a,b) -> Range.toZ a, Range.toZ b)
 
-    member bc.UntypedParse(filename, source, options) = 
-        bc.ParseFileInProject(filename, source, options) 
+    member bc.UntypedParse(filename, source, options, cancellationToken) = 
+        bc.ParseFileInProject(filename, source, options, cancellationToken) 
         |> Async.RunSynchronously
 
     member bc.TypeCheckSource(parseResults, filename, fileVersion, source, options, isResultObsolete, textSnapshotInfo:obj) = 
