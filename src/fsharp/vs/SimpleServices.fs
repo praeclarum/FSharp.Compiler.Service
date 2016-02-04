@@ -5,6 +5,7 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
     open System
     open System.IO
     open System.Text
+    open System.Threading
     open Microsoft.FSharp.Compiler.Range
     open Microsoft.FSharp.Compiler.SourceCodeServices
     open Microsoft.FSharp.Compiler.Driver
@@ -145,16 +146,16 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
                 1
 
         /// Compile using the given flags.  Source files names are resolved via the FileSystem API. The output file must be given by a -o flag. 
-        let compileFromArgs (argv: string[], tcImportsCapture, dynamicAssemblyCreator)  = 
+        let compileFromArgs (argv: string[], tcImportsCapture, dynamicAssemblyCreator, cancellationToken : CancellationToken)  = 
      
             let errors, errorLogger, loggerProvider = mkCompilationErorHandlers()
             let result = 
                 tryCompile errorLogger (fun exiter -> 
-                    mainCompile (argv, (*bannerAlreadyPrinted*)true, (*openBinariesInMemory*)true, exiter, loggerProvider, tcImportsCapture, dynamicAssemblyCreator) )
+                    mainCompile (argv, (*bannerAlreadyPrinted*)true, (*openBinariesInMemory*)true, exiter, loggerProvider, tcImportsCapture, dynamicAssemblyCreator, cancellationToken) )
         
             errors.ToArray(), result
 
-        let compileFromAsts (asts, assemblyName, outFile, dependencies, noframework, pdbFile, executable, tcImportsCapture, dynamicAssemblyCreator) =
+        let compileFromAsts (asts, assemblyName, outFile, dependencies, noframework, pdbFile, executable, tcImportsCapture, dynamicAssemblyCreator, cancellationToken : CancellationToken) =
 
             let errors, errorLogger, loggerProvider = mkCompilationErorHandlers()
      
@@ -163,7 +164,7 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
      
             let result = 
                 tryCompile errorLogger (fun exiter -> 
-                    compileOfAst ((*openBinariesInMemory=*)true, assemblyName, target, outFile, pdbFile, dependencies, noframework, exiter, loggerProvider, asts, tcImportsCapture, dynamicAssemblyCreator))
+                    compileOfAst ((*openBinariesInMemory=*)true, assemblyName, target, outFile, pdbFile, dependencies, noframework, exiter, loggerProvider, asts, tcImportsCapture, dynamicAssemblyCreator, cancellationToken))
 
             errors.ToArray(), result
 
@@ -277,12 +278,12 @@ namespace Microsoft.FSharp.Compiler.SimpleSourceCodeServices
             let options = checker.GetProjectOptionsFromCommandLineArgs(projectFileName, argv)
             checker.ParseAndCheckProject(options)
 
-        member x.Compile (argv: string[])  = 
-            compileFromArgs (argv, None, None)
+        member x.Compile (argv: string[], cancellationToken : CancellationToken)  = 
+            compileFromArgs (argv, None, None, cancellationToken)
 
-        member x.Compile (ast:ParsedInput list, assemblyName:string, outFile:string, dependencies:string list, ?pdbFile:string, ?executable:bool, ?noframework:bool) =
+        member x.Compile (ast:ParsedInput list, assemblyName:string, outFile:string, dependencies:string list, cancellationToken : CancellationToken, ?pdbFile:string, ?executable:bool, ?noframework:bool) =
             let noframework = defaultArg noframework false
-            compileFromAsts (ast, assemblyName, outFile, dependencies, noframework, pdbFile, executable, None, None)
+            compileFromAsts (ast, assemblyName, outFile, dependencies, noframework, pdbFile, executable, None, None, cancellationToken)
 
 #if !NO_DYNAMIC_ASSEMBLY
         member x.CompileToDynamicAssembly (otherFlags: string[], execute: (TextWriter * TextWriter) option)  = 

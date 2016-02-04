@@ -42,7 +42,8 @@ val mainCompile :
     exiter: Exiter * 
     loggerProvider: ErrorLoggerProvider * 
     tcImportsCapture: (TcImports -> unit) option *
-    dynamicAssemblyCreator: (TcConfig * ILGlobals * ErrorLogger * string * string option * ILModuleDef * SigningInfo -> unit) option
+    dynamicAssemblyCreator: (TcConfig * ILGlobals * ErrorLogger * string * string option * ILModuleDef * SigningInfo -> unit) option *
+    cancellationToken : System.Threading.CancellationToken
       -> unit
 
 val compileOfAst : 
@@ -57,7 +58,8 @@ val compileOfAst :
     loggerProvider: ErrorLoggerProvider * 
     inputs:ParsedInput list *
     tcImportsCapture : (TcImports -> unit) option *
-    dynamicAssemblyCreator: (TcConfig * ILGlobals * ErrorLogger * string * string option * ILModuleDef * SigningInfo -> unit) option
+    dynamicAssemblyCreator: (TcConfig * ILGlobals * ErrorLogger * string * string option * ILModuleDef * SigningInfo -> unit) option *
+    cancellationToken : System.Threading.CancellationToken
       -> unit
 
 [<RequireQualifiedAccess>]
@@ -67,7 +69,7 @@ type CompilationOutput =
 
 type InProcCompiler = 
     new : unit -> InProcCompiler
-    member Compile : args : string[] -> bool * CompilationOutput
+    member Compile : args : string[] * cancellationToken : System.Threading.CancellationToken -> bool * CompilationOutput
 
 
 #endif

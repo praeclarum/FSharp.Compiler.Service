@@ -1771,7 +1771,7 @@ let expandFileNameIfNeeded (tcConfig : TcConfig) name =
 [<NoEquality; NoComparison>]
 type Args<'T> = Args  of 'T
 
-let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, errorLoggerProvider : ErrorLoggerProvider, disposables : DisposablesTracker) = 
+let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, errorLoggerProvider : ErrorLoggerProvider, disposables : DisposablesTracker, cancellationToken : CancellationToken) = 
 
     // See Bug 735819 
     let lcidFromCodePage = 
@@ -1816,9 +1816,9 @@ let main0(argv,bannerAlreadyPrinted,openBinariesInMemory:bool,exiter:Exiter, err
              errorLoggerProvider,
              disposables)
 
-    tcGlobals,tcImports,frameworkTcImports,generatedCcu,typedAssembly,topAttrs,tcConfig,outfile,pdbfile,assemblyName,errorLogger,exiter
+    tcGlobals,tcImports,frameworkTcImports,generatedCcu,typedAssembly,topAttrs,tcConfig,outfile,pdbfile,assemblyName,errorLogger,exiter,cancellationToken
 
-let main1(tcGlobals, tcImports: TcImports, frameworkTcImports, generatedCcu, typedAssembly, topAttrs, tcConfig: TcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter: Exiter) =
+let main1(tcGlobals, tcImports: TcImports, frameworkTcImports, generatedCcu, typedAssembly, topAttrs, tcConfig: TcConfig, outfile, pdbfile, assemblyName, errorLogger, exiter: Exiter, cancellationToken : CancellationToken) =
 
     if tcConfig.typeCheckOnly then exiter.Exit 0
     
@@ -1867,11 +1867,11 @@ let main1(tcGlobals, tcImports: TcImports, frameworkTcImports, generatedCcu, typ
     // Pass on only the minimum information required for the next phase to ensure GC kicks in.
     // In principle the JIT should be able to do good liveness analysis to clean things up, but the
     // data structures involved here are so large we can't take the risk.
-    Args(tcConfig, tcImports, frameworkTcImports, tcGlobals, errorLogger, generatedCcu, outfile, typedAssembly, topAttrs, pdbfile, assemblyName, assemVerFromAttrib, signingInfo, exiter)
+    Args(tcConfig, tcImports, frameworkTcImports, tcGlobals, errorLogger, generatedCcu, outfile, typedAssembly, topAttrs, pdbfile, assemblyName, assemVerFromAttrib, signingInfo, exiter, cancellationToken)
 
 
 // set up typecheck for given AST without parsing any command line parameters
-let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider: ErrorLoggerProvider, inputs : ParsedInput list) =
+let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider: ErrorLoggerProvider, inputs : ParsedInput list, cancellationToken : CancellationToken) =
 
     let tcConfigB = TcConfigBuilder.CreateNew(defaultFSharpBinariesDir, (*optimizeForMemory*) false, Directory.GetCurrentDirectory(), isInteractive=false, isInvalidationSupported=false)
     tcConfigB.openBinariesInMemory <- openBinariesInMemory
@@ -1934,10 +1934,10 @@ let main1OfAst (openBinariesInMemory, assemblyName, target, outfile, pdbFile, dl
     // Pass on only the minimimum information required for the next phase to ensure GC kicks in.
     // In principle the JIT should be able to do good liveness analysis to clean things up, but the
     // data structures involved here are so large we can't take the risk.
-    Args(tcConfig,tcImports,frameworkTcImports,tcGlobals,errorLogger,generatedCcu,outfile,typedAssembly,topAttrs,pdbFile,assemblyName,assemVerFromAttrib,signingInfo,exiter)
+    Args(tcConfig,tcImports,frameworkTcImports,tcGlobals,errorLogger,generatedCcu,outfile,typedAssembly,topAttrs,pdbFile,assemblyName,assemVerFromAttrib,signingInfo,exiter,cancellationToken)
 
   
-let main2(Args(tcConfig, tcImports, frameworkTcImports: TcImports, tcGlobals, errorLogger: ErrorLogger, generatedCcu: CcuThunk, outfile, typedAssembly, topAttrs, pdbfile, assemblyName, assemVerFromAttrib, signingInfo, exiter: Exiter)) = 
+let main2(Args(tcConfig, tcImports, frameworkTcImports: TcImports, tcGlobals, errorLogger: ErrorLogger, generatedCcu: CcuThunk, outfile, typedAssembly, topAttrs, pdbfile, assemblyName, assemVerFromAttrib, signingInfo, exiter: Exiter, cancellationToken : CancellationToken)) = 
       
     ReportTime tcConfig ("Encode Interface Data");
     let exportRemapping = MakeExportRemapping generatedCcu generatedCcu.Contents
@@ -1990,9 +1990,9 @@ let main2(Args(tcConfig, tcImports, frameworkTcImports: TcImports, tcGlobals, er
     // Pass on only the minimum information required for the next phase to ensure GC kicks in.
     // In principle the JIT should be able to do good liveness analysis to clean things up, but the
     // data structures involved here are so large we can't take the risk.
-    Args(tcConfig,tcImports,tcGlobals,errorLogger,generatedCcu,outfile,optimizedImpls,topAttrs,pdbfile,assemblyName, (sigDataAttributes, sigDataResources), optDataResources,assemVerFromAttrib,signingInfo,metadataVersion,exiter)
+    Args(tcConfig,tcImports,tcGlobals,errorLogger,generatedCcu,outfile,optimizedImpls,topAttrs,pdbfile,assemblyName, (sigDataAttributes, sigDataResources), optDataResources,assemVerFromAttrib,signingInfo,metadataVersion,exiter,cancellationToken)
 
-let main2b (tcImportsCapture,dynamicAssemblyCreator) (Args(tcConfig:TcConfig, tcImports, tcGlobals, errorLogger, generatedCcu:CcuThunk, outfile, optimizedImpls, topAttrs, pdbfile, assemblyName, idata, optDataResources, assemVerFromAttrib, signingInfo, metadataVersion, exiter:Exiter)) = 
+let main2b (tcImportsCapture,dynamicAssemblyCreator) (Args(tcConfig:TcConfig, tcImports, tcGlobals, errorLogger, generatedCcu:CcuThunk, outfile, optimizedImpls, topAttrs, pdbfile, assemblyName, idata, optDataResources, assemVerFromAttrib, signingInfo, metadataVersion, exiter:Exiter, cancellationToken : CancellationToken)) = 
   
     match tcImportsCapture with 
     | None -> ()
@@ -2029,9 +2029,9 @@ let main2b (tcImportsCapture,dynamicAssemblyCreator) (Args(tcConfig:TcConfig, tc
 
     AbortOnError(errorLogger,tcConfig,exiter)
     
-    Args (tcConfig,errorLogger,staticLinker,ilGlobals,outfile,pdbfile,ilxMainModule,signingInfo,exiter)
+    Args (tcConfig,errorLogger,staticLinker,ilGlobals,outfile,pdbfile,ilxMainModule,signingInfo,exiter,cancellationToken)
 
-let main2c(Args(tcConfig, errorLogger, staticLinker, ilGlobals, outfile, pdbfile, ilxMainModule, signingInfo, exiter: Exiter)) = 
+let main2c(Args(tcConfig, errorLogger, staticLinker, ilGlobals, outfile, pdbfile, ilxMainModule, signingInfo, exiter: Exiter, cancellationToken : CancellationToken)) = 
       
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.IlGen)
     
@@ -2041,10 +2041,10 @@ let main2c(Args(tcConfig, errorLogger, staticLinker, ilGlobals, outfile, pdbfile
     let ilxMainModule = EraseClosures.ConvModule ilGlobals ilxMainModule 
 
     AbortOnError(errorLogger,tcConfig,exiter)
-    Args(tcConfig,errorLogger,staticLinker,ilGlobals,ilxMainModule,outfile,pdbfile,signingInfo,exiter)
+    Args(tcConfig,errorLogger,staticLinker,ilGlobals,ilxMainModule,outfile,pdbfile,signingInfo,exiter,cancellationToken)
   
 
-let main3(Args(tcConfig, errorLogger: ErrorLogger, staticLinker, ilGlobals, ilxMainModule, outfile, pdbfile, signingInfo, exiter:Exiter)) = 
+let main3(Args(tcConfig, errorLogger: ErrorLogger, staticLinker, ilGlobals, ilxMainModule, outfile, pdbfile, signingInfo, exiter:Exiter, cancellationToken : CancellationToken)) = 
         
     let ilxMainModule =  
         try  staticLinker ilxMainModule
@@ -2055,9 +2055,9 @@ let main3(Args(tcConfig, errorLogger: ErrorLogger, staticLinker, ilGlobals, ilxM
 
     AbortOnError(errorLogger,tcConfig,exiter)
         
-    Args (tcConfig,errorLogger,ilGlobals,ilxMainModule,outfile,pdbfile,signingInfo,exiter)
+    Args (tcConfig,errorLogger,ilGlobals,ilxMainModule,outfile,pdbfile,signingInfo,exiter,cancellationToken)
 
-let main4 dynamicAssemblyCreator (Args(tcConfig, errorLogger:ErrorLogger, ilGlobals, ilxMainModule, outfile, pdbfile, signingInfo, exiter)) = 
+let main4 dynamicAssemblyCreator (Args(tcConfig, errorLogger:ErrorLogger, ilGlobals, ilxMainModule, outfile, pdbfile, signingInfo, exiter, cancellationToken : CancellationToken)) = 
     ReportTime tcConfig "Write .NET Binary"
     use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Output)    
     let outfile = tcConfig.MakePathAbsolute outfile
@@ -2077,10 +2077,10 @@ let main4 dynamicAssemblyCreator (Args(tcConfig, errorLogger:ErrorLogger, ilGlob
     ReportTime tcConfig "Exiting"
 
 
-let typecheckAndCompile(argv,bannerAlreadyPrinted,openBinariesInMemory,exiter:Exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator) =
+let typecheckAndCompile(argv,bannerAlreadyPrinted,openBinariesInMemory,exiter:Exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator, cancellationToken) =
     // Don's note: "GC of intermediate data is really, really important here"
     use disposables = new DisposablesTracker()
-    main0(argv,bannerAlreadyPrinted,openBinariesInMemory,exiter, errorLoggerProvider, disposables)
+    main0(argv,bannerAlreadyPrinted,openBinariesInMemory,exiter, errorLoggerProvider, disposables, cancellationToken)
     |> main1
     |> main2
     |> main2b (tcImportsCapture,dynamicAssemblyCreator)
@@ -2089,17 +2089,17 @@ let typecheckAndCompile(argv,bannerAlreadyPrinted,openBinariesInMemory,exiter:Ex
     |> main4 dynamicAssemblyCreator
 
 
-let compileOfAst (openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs, tcImportsCapture, dynamicAssemblyCreator) = 
-    main1OfAst (openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs)
+let compileOfAst (openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs, tcImportsCapture, dynamicAssemblyCreator, cancellationToken) = 
+    main1OfAst (openBinariesInMemory, assemblyName, target, outFile, pdbFile, dllReferences, noframework, exiter, errorLoggerProvider, inputs, cancellationToken)
     |> main2
     |> main2b (tcImportsCapture, dynamicAssemblyCreator)
     |> main2c
     |> main3
     |> main4 dynamicAssemblyCreator
 
-let mainCompile (argv, bannerAlreadyPrinted, openBinariesInMemory, exiter:Exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator) = 
+let mainCompile (argv, bannerAlreadyPrinted, openBinariesInMemory, exiter:Exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator, cancellationToken) = 
     //System.Runtime.GCSettings.LatencyMode <- System.Runtime.GCLatencyMode.Batch
-    typecheckAndCompile(argv, bannerAlreadyPrinted, openBinariesInMemory, exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator)
+    typecheckAndCompile(argv, bannerAlreadyPrinted, openBinariesInMemory, exiter, errorLoggerProvider, tcImportsCapture, dynamicAssemblyCreator, cancellationToken)
 
 [<RequireQualifiedAccess>]
 type CompilationOutput = 
@@ -2107,7 +2107,7 @@ type CompilationOutput =
       Warnings : ErrorOrWarning[]  }
 
 type InProcCompiler() = 
-    member this.Compile(argv) = 
+    member this.Compile(argv, cancellationToken : CancellationToken) = 
 
         let errors = ResizeArray()
         let warnings = ResizeArray()
@@ -2128,7 +2128,7 @@ type InProcCompiler() =
             { new Exiter with
                  member this.Exit n = exitCode := n; raise StopProcessing }
         try 
-            typecheckAndCompile(argv, false, true, exiter, loggerProvider, None, None)
+            typecheckAndCompile(argv, false, true, exiter, loggerProvider, None, None, cancellationToken)
         with 
             | StopProcessing -> ()
             | ReportedError _  | WrappedError(ReportedError _,_)  ->

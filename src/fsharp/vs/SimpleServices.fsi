@@ -105,10 +105,10 @@ type SimpleSourceCodeServices =
     member ParseAndCheckProject: projectFileName:string * argv:string [] -> Async<FSharpCheckProjectResults>
 
     /// Compile using the given flags.  Source files names are resolved via the FileSystem API. The output file must be given by a -o flag. 
-    member Compile: argv:string [] -> FSharpErrorInfo [] * int
+    member Compile: argv:string [] * cancellationToken : System.Threading.CancellationToken -> FSharpErrorInfo [] * int
     
     /// TypeCheck and compile provided AST
-    member Compile: ast:ParsedInput list * assemblyName:string * outFile:string * dependencies:string list * ?pdbFile:string * ?executable:bool * ?noframework:bool -> FSharpErrorInfo [] * int
+    member Compile: ast:ParsedInput list * assemblyName:string * outFile:string * dependencies:string list * cancellationToken : System.Threading.CancellationToken * ?pdbFile:string * ?executable:bool * ?noframework:bool -> FSharpErrorInfo [] * int
 
 #if !NO_DYNAMIC_ASSEMBLY
     /// Compiles to a dynamic assembly usinng the given flags.  Any source files names 
