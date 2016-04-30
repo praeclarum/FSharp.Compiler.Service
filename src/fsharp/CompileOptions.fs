@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 // # FSComp.SR.opts
 
@@ -26,17 +26,24 @@ open Microsoft.FSharp.Compiler.AbstractIL.IL
 open Microsoft.FSharp.Compiler.Lib
 open Microsoft.FSharp.Compiler.Range
 open Microsoft.FSharp.Compiler.Lexhelp
+
 #if NO_COMPILER_BACKEND
 #else
 open Microsoft.FSharp.Compiler.IlxGen
 #endif
 
+#if FX_RESHAPED_REFLECTION
+    open Microsoft.FSharp.Core.ReflectionAdapters
+#endif
 
 module Attributes = 
     open System.Runtime.CompilerServices
 
     //[<assembly: System.Security.SecurityTransparent>]
+#if FX_NO_DEFAULT_DEPENDENCY_TYPE
+#else
     [<Dependency("FSharp.Core",LoadHint.Always)>] 
+#endif
     do()
 
 //----------------------------------------------------------------------------
@@ -105,7 +112,10 @@ let PrintCompilerOption (CompilerOption(_s,_tag,_spec,_,help) as compilerOption)
 #if NO_WINDOWS
     let lineWidth = defaultLineWidth
 #else
-    let lineWidth = try System.Console.BufferWidth with e -> defaultLineWidth
+    let lineWidth = 
+        try 
+            System.Console.BufferWidth 
+        with e -> defaultLineWidth
 #endif
     let lineWidth = if lineWidth=0 then defaultLineWidth else lineWidth (* Have seen BufferWidth=0 on Linux/Mono *)
     // Lines have this form: <flagWidth><space><description>
@@ -176,6 +186,32 @@ let DumpCompilerOptionBlocks blocks = List.iter dumpCompilerOptionBlock blocks
 let isSlashOpt (opt:string) = 
     opt.[0] = '/' && (opt.Length = 1 || not (opt.[1..].Contains "/"))
 
+module ResponseFile =
+
+    type ResponseFileData = ResponseFileLine list
+    and ResponseFileLine =
+        | CompilerOptionSpec of string
+        | Comment of string
+
+    let parseFile path : Choice<ResponseFileData,Exception> =
+        let parseLine (l: string) =
+            match l with
+            | s when String.IsNullOrWhiteSpace(s) -> None
+            | s when l.StartsWith("#") -> Some (ResponseFileLine.Comment (s.TrimStart('#')))
+            | s -> Some (ResponseFileLine.CompilerOptionSpec (s.Trim()))
+
+        try
+            use stream = FileSystem.FileStreamReadShim path
+            use reader = new System.IO.StreamReader(stream, true)
+            let data =
+                seq { while not reader.EndOfStream do yield reader.ReadLine () }
+                |> Seq.choose parseLine
+                |> List.ofSeq
+            Choice1Of2 data
+        with e ->
+            Choice2Of2 e
+
+
 let ParseCompilerOptions (collectOtherArgument : string -> unit, blocks: CompilerOptionBlock list, args) =
   use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind (BuildPhase.Parameter)
   
@@ -232,6 +268,35 @@ let ParseCompilerOptions (collectOtherArgument : string -> unit, blocks: Compile
   let rec processArg args =    
     match args with 
     | [] -> ()
+    | ((rsp: string) :: t) when rsp.StartsWith("@") ->
+        let responseFileOptions =
+            let fullpath =
+                try
+                    Some (rsp.TrimStart('@') |> FileSystem.GetFullPathShim)
+                with _ ->
+                    None
+
+            match fullpath with
+            | None ->
+                errorR(Error(FSComp.SR.optsResponseFileNameInvalid(rsp),rangeCmdArgs))
+                []
+            | Some(path) when not (FileSystem.SafeExists path) ->
+                errorR(Error(FSComp.SR.optsResponseFileNotFound(rsp, path),rangeCmdArgs))
+                []
+            | Some path ->
+                match ResponseFile.parseFile path with
+                | Choice2Of2 _ ->
+                    errorR(Error(FSComp.SR.optsInvalidResponseFile(rsp, path),rangeCmdArgs))
+                    []
+                | Choice1Of2 rspData ->
+                    let onlyOptions l =
+                        match l with
+                        | ResponseFile.ResponseFileLine.Comment _ -> None
+                        | ResponseFile.ResponseFileLine.CompilerOptionSpec opt -> Some opt
+                    rspData |> List.choose onlyOptions
+
+        processArg (responseFileOptions @ t)
+
     | opt :: t ->  
 
         let optToken, argString = parseOption opt
@@ -413,10 +478,11 @@ let SetDebugSwitch (tcConfigB : TcConfigBuilder) (dtype : string option) (s : Op
     match dtype with
     | Some(s) ->
        match s with 
-       | "pdbonly" -> tcConfigB.jitTracking <- false
-       | "full" -> tcConfigB.jitTracking <- true 
+       | "portable" -> tcConfigB.portablePDB <- true
+       | "pdbonly" ->  tcConfigB.portablePDB <- false
+       | "full" ->     tcConfigB.portablePDB <- false
        | _ -> error(Error(FSComp.SR.optsUnrecognizedDebugType(s), rangeCmdArgs))
-    | None -> tcConfigB.jitTracking <- s = OptionSwitch.On 
+    | None -> tcConfigB.portablePDB <- false
     tcConfigB.debuginfo <- s = OptionSwitch.On
 
 let setOutFileName tcConfigB s = 
@@ -437,7 +503,7 @@ let tagFileList = "<file;...>"
 let tagDirList = "<dir;...>"
 let tagPathList = "<path;...>"
 let tagResInfo = "<resinfo>"
-let tagFullPDBOnly = "{full|pdbonly}"
+let tagFullPDBOnlyPortable = "{full|pdbonly|portable}"
 let tagWarnList = "<warn;...>"
 let tagSymbolList = "<symbol;...>"
 let tagAddress = "<address>"
@@ -458,13 +524,13 @@ let PrintOptionInfo (tcConfigB:TcConfigBuilder) =
     printfn "  doDetuple  . . . . . . : %+A" tcConfigB.doDetuple
     printfn "  doTLR  . . . . . . . . : %+A" tcConfigB.doTLR
     printfn "  doFinalSimplify. . . . : %+A" tcConfigB.doFinalSimplify
-    printfn "  jitTracking  . . . . . : %+A" tcConfigB.jitTracking
+    printfn "  portablePDB. . . . . . : %+A" tcConfigB.portablePDB
     printfn "  debuginfo  . . . . . . : %+A" tcConfigB.debuginfo
     printfn "  resolutionEnvironment  : %+A" tcConfigB.resolutionEnvironment
     printfn "  product  . . . . . . . : %+A" tcConfigB.productNameForBannerText
+    printfn "  copyFSharpCore . . . . : %+A" tcConfigB.copyFSharpCore
     tcConfigB.includes |> List.sort
                        |> List.iter (printfn "  include  . . . . . . . : %A")
-  
 
 // OptionBlock: Input files
 //-------------------------
@@ -518,7 +584,7 @@ let errorsAndWarningsFlags (tcConfigB : TcConfigBuilder) =
 
 // OptionBlock: Output files
 //--------------------------
-          
+
 let outputFileFlagsFsi (_tcConfigB : TcConfigBuilder) = []
 let outputFileFlagsFsc (tcConfigB : TcConfigBuilder) =
     [
@@ -527,7 +593,7 @@ let outputFileFlagsFsc (tcConfigB : TcConfigBuilder) =
 
         CompilerOption("target",  tagExe, OptionString (SetTarget tcConfigB), None,
                             Some (FSComp.SR.optsBuildConsole()));
-                           
+
         CompilerOption("target", tagWinExe, OptionString (SetTarget tcConfigB), None,
                             Some (FSComp.SR.optsBuildWindows()));
 
@@ -539,6 +605,9 @@ let outputFileFlagsFsc (tcConfigB : TcConfigBuilder) =
 
         CompilerOption("delaysign", tagNone, OptionSwitch (fun s -> tcConfigB.delaysign <- (s = OptionSwitch.On)), None,
                             Some (FSComp.SR.optsDelaySign()));
+
+        CompilerOption("publicsign", tagNone, OptionSwitch (fun s -> tcConfigB.publicsign <- (s = OptionSwitch.On)), None,
+                            Some (FSComp.SR.optsPublicSign()));
 
         CompilerOption("doc", tagFile, OptionString (fun s -> tcConfigB.xmlDocOutputFile <- Some s), None,
                             Some (FSComp.SR.optsWriteXml()));
@@ -560,6 +629,8 @@ let outputFileFlagsFsc (tcConfigB : TcConfigBuilder) =
 
         CompilerOption("sig", tagFile, OptionString (setSignatureFile tcConfigB), None,
                            Some (FSComp.SR.optsSig()));    
+                           
+        CompilerOption("nocopyfsharpcore", tagNone, OptionUnit (fun () -> tcConfigB.copyFSharpCore <- false), None, Some (FSComp.SR.optsNoCopyFsharpCore()));
     ]
 
 
@@ -588,13 +659,13 @@ let resourcesFlagsFsc (tcConfigB : TcConfigBuilder) =
 
 // OptionBlock: Code generation
 //-----------------------------
-      
+
 let codeGenerationFlags (tcConfigB : TcConfigBuilder) =
     [
         CompilerOption("debug", tagNone, OptionSwitch (SetDebugSwitch tcConfigB None), None,
                            Some (FSComp.SR.optsDebugPM()));
-        
-        CompilerOption("debug", tagFullPDBOnly, OptionString (fun s -> SetDebugSwitch tcConfigB (Some(s)) OptionSwitch.On), None,
+
+        CompilerOption("debug", tagFullPDBOnlyPortable, OptionString (fun s -> SetDebugSwitch tcConfigB (Some(s)) OptionSwitch.On), None,
                            Some (FSComp.SR.optsDebug()));
 
         CompilerOption("optimize", tagNone, OptionSwitch (SetOptimizeSwitch tcConfigB) , None,
@@ -605,9 +676,9 @@ let codeGenerationFlags (tcConfigB : TcConfigBuilder) =
                            
         CompilerOption("crossoptimize", tagNone, OptionSwitch (crossOptimizeSwitch tcConfigB), None,
                            Some (FSComp.SR.optsCrossoptimize()));
-        
+
     ]
- 
+
 
 // OptionBlock: Language
 //----------------------
@@ -637,7 +708,7 @@ let libFlag (tcConfigB : TcConfigBuilder) =
 let libFlagAbbrev (tcConfigB : TcConfigBuilder) = 
         CompilerOption("I", tagDirList, OptionStringList (fun s -> tcConfigB.AddIncludePath (rangeStartup,s,tcConfigB.implicitIncludeDir)), None,
                            Some (FSComp.SR.optsShortFormOf("--lib")))
-      
+
 let codePageFlag (tcConfigB : TcConfigBuilder) = 
         CompilerOption("codepage", tagInt, OptionInt (fun n -> 
                      try 
@@ -647,6 +718,11 @@ let codePageFlag (tcConfigB : TcConfigBuilder) =
 
                      tcConfigB.inputCodePage <- Some(n)), None,
                            Some (FSComp.SR.optsCodepage()))
+
+#if PREFERRED_UI_LANG
+let preferredUiLang (tcConfigB: TcConfigBuilder) = 
+        CompilerOption("preferreduilang", tagString, OptionString (fun s -> tcConfigB.preferredUiLang <- Some(s)), None, Some(FSComp.SR.optsStrongKeyContainer()));
+#endif
 
 let utf8OutputFlag (tcConfigB: TcConfigBuilder) = 
         CompilerOption("utf8output", tagNone, OptionUnit (fun () -> tcConfigB.utf8output <- true), None,
@@ -659,11 +735,14 @@ let fullPathsFlag  (tcConfigB : TcConfigBuilder)  =
 let cliRootFlag (_tcConfigB : TcConfigBuilder) = 
         CompilerOption("cliroot", tagString, OptionString (fun _  -> ()), Some(DeprecatedCommandLineOptionFull(FSComp.SR.optsClirootDeprecatedMsg(), rangeCmdArgs)),
                            Some(FSComp.SR.optsClirootDescription()))
-          
+
 let advancedFlagsBoth tcConfigB =
     [
         codePageFlag tcConfigB;
         utf8OutputFlag tcConfigB;
+#if PREFERRED_UI_LANG
+        preferredUiLang tcConfigB;
+#endif
         fullPathsFlag tcConfigB;
         libFlag tcConfigB;
     ]
@@ -698,15 +777,15 @@ let advancedFlagsFsc tcConfigB =
         yield CompilerOption("staticlink", tagFile, OptionString (fun s -> tcConfigB.extraStaticLinkRoots <- tcConfigB.extraStaticLinkRoots @ [s]), None,
                              Some (FSComp.SR.optsStaticlink()));
 
+#if ENABLE_MONO_SUPPORT
         if runningOnMono then 
             yield CompilerOption("resident", tagFile, OptionUnit (fun () -> ()), None,
                                  Some (FSComp.SR.optsResident()));
-
+#endif
         yield CompilerOption("pdb", tagString, OptionString (fun s -> tcConfigB.debugSymbolFile <- Some s), None,
                              Some (FSComp.SR.optsPdb()));
         yield CompilerOption("simpleresolution", tagNone, OptionUnit (fun () -> tcConfigB.useMonoResolution<-true), None,
                              Some (FSComp.SR.optsSimpleresolution()));
-
         yield CompilerOption("highentropyva", tagNone, OptionSwitch (useHighEntropyVASwitch tcConfigB), None, Some (FSComp.SR.optsUseHighEntropyVA()))
         yield CompilerOption("subsystemversion", tagString, OptionString (subSystemVersionSwitch tcConfigB), None, Some (FSComp.SR.optsSubSystemVersion()))
         yield CompilerOption("targetprofile", tagString, OptionString (setTargetProfile tcConfigB), None, Some(FSComp.SR.optsTargetProfile()))
@@ -738,7 +817,11 @@ let testFlag tcConfigB =
 let vsSpecificFlags (tcConfigB: TcConfigBuilder) = 
   [ CompilerOption("vserrors", tagNone, OptionUnit (fun () -> tcConfigB.errorStyle <- ErrorStyle.VSErrors), None, None);
     CompilerOption("validate-type-providers", tagNone, OptionUnit (id), None, None);  // preserved for compatibility's sake, no longer has any effect
+#if PREFERRED_UI_LANG
+    CompilerOption("LCID", tagInt, OptionInt (fun _n -> ()), None, None);
+#else
     CompilerOption("LCID", tagInt, OptionInt (fun n -> tcConfigB.lcid <- Some(n)), None, None);
+#endif
     CompilerOption("flaterrors", tagNone, OptionUnit (fun () -> tcConfigB.flatErrors <- true), None, None); 
     CompilerOption("sqmsessionguid", tagNone, OptionString (fun s -> tcConfigB.sqmSessionGuid <- try System.Guid(s) |> Some  with e -> None), None, None);
     CompilerOption("gccerrors", tagNone, OptionUnit (fun () -> tcConfigB.errorStyle <- ErrorStyle.GccErrors), None, None); 
@@ -831,8 +914,8 @@ let deprecatedFlagsFsc tcConfigB =
     cliRootFlag tcConfigB;
     CompilerOption("jit-optimize", tagNone, OptionUnit (fun _ -> tcConfigB.optSettings <- { tcConfigB.optSettings with jitOptUser = Some true }), Some(DeprecatedCommandLineOptionNoDescription("--jit-optimize", rangeCmdArgs)), None);
     CompilerOption("no-jit-optimize", tagNone, OptionUnit (fun _ -> tcConfigB.optSettings <- { tcConfigB.optSettings with jitOptUser = Some false }), Some(DeprecatedCommandLineOptionNoDescription("--no-jit-optimize", rangeCmdArgs)), None);
-    CompilerOption("jit-tracking", tagNone, OptionUnit (fun _ -> tcConfigB.jitTracking <- true), Some(DeprecatedCommandLineOptionNoDescription("--jit-tracking", rangeCmdArgs)), None);
-    CompilerOption("no-jit-tracking", tagNone, OptionUnit (fun _ -> tcConfigB.jitTracking <- false), Some(DeprecatedCommandLineOptionNoDescription("--no-jit-tracking", rangeCmdArgs)), None);
+    CompilerOption("jit-tracking", tagNone, OptionUnit (fun _ -> () ), Some(DeprecatedCommandLineOptionNoDescription("--jit-tracking", rangeCmdArgs)), None);
+    CompilerOption("no-jit-tracking", tagNone, OptionUnit (fun _ -> () ), Some(DeprecatedCommandLineOptionNoDescription("--no-jit-tracking", rangeCmdArgs)), None);
     CompilerOption("progress", tagNone, OptionUnit (fun () -> progress := true), Some(DeprecatedCommandLineOptionNoDescription("--progress", rangeCmdArgs)), None);
     (compilingFsLibFlag tcConfigB) ;
     (compilingFsLib20Flag tcConfigB) ;
@@ -877,7 +960,8 @@ let miscFlagsBoth tcConfigB =
       
 let miscFlagsFsc tcConfigB =
     miscFlagsBoth tcConfigB @
-    [   CompilerOption("help", tagNone, OptionHelp (fun blocks -> displayHelpFsc tcConfigB blocks), None, Some (FSComp.SR.optsHelp()))
+    [   CompilerOption("help", tagNone, OptionHelp (fun blocks -> displayHelpFsc tcConfigB blocks), None, Some (FSComp.SR.optsHelp()));
+        CompilerOption("@<file>", tagNone, OptionUnit ignore, None, Some (FSComp.SR.optsResponseFile()))
     ]
 let miscFlagsFsi tcConfigB = miscFlagsBoth tcConfigB
 
@@ -1054,10 +1138,16 @@ let ReportTime (tcConfig:TcConfig) descr =
         | Some("fsc-oom") -> raise(System.OutOfMemoryException())
         | Some("fsc-an") -> raise(System.ArgumentNullException("simulated"))
         | Some("fsc-invop") -> raise(System.InvalidOperationException())
+#if FX_REDUCED_EXCEPTIONS
+#else
         | Some("fsc-av") -> raise(System.AccessViolationException())
+#endif
         | Some("fsc-aor") -> raise(System.ArgumentOutOfRangeException())
         | Some("fsc-dv0") -> raise(System.DivideByZeroException())
+#if FX_REDUCED_EXCEPTIONS
+#else
         | Some("fsc-nfn") -> raise(System.NotFiniteNumberException())
+#endif
         | Some("fsc-oe") -> raise(System.OverflowException())
         | Some("fsc-atmm") -> raise(System.ArrayTypeMismatchException())
         | Some("fsc-bif") -> raise(System.BadImageFormatException())
@@ -1277,6 +1367,3 @@ let DoWithErrorColor isWarn f =
               finally
                 ignoreFailureOnMono1_1_16 (fun () -> Console.ForegroundColor <- c)
 #endif
-          
-
-        

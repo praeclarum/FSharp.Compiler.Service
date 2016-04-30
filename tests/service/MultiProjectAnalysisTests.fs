@@ -5,7 +5,7 @@
 #load "FsUnit.fs"
 #load "Common.fs"
 #else
-module FSharp.Compiler.Service.Tests.MultiProjectAnalysisTests
+module Tests.Service.MultiProjectAnalysisTests
 #endif
 
 open Microsoft.FSharp.Compiler
@@ -180,11 +180,12 @@ let ``Test multi project 1 all symbols`` () =
 //------------------------------------------------------------------------------------
 
 
-
 // A project referencing many sub-projects
-module ManyProjectsStressTest = 
+module internal ManyProjectsStressTest = 
     open System.IO
 
+    let numProjectsForStressTest = 100
+  
     type Project = { ModuleName: string; FileName: string; Options: FSharpProjectOptions; DllName: string } 
     let projects = 
         [ for i in 1 .. numProjectsForStressTest do 
@@ -242,17 +243,24 @@ let p = ("""
         |> function Some x -> x | None -> if a = jointProject.FileName then "fileN" else "??"
 
 
+    let makeCheckerForStressTest ensureBigEnough = 
+        let size = (if ensureBigEnough then numProjectsForStressTest + 10 else numProjectsForStressTest / 2 )
+        FSharpChecker.Create(projectCacheSize=size)
 
 [<Test>]
 let ``Test ManyProjectsStressTest whole project errors`` () = 
 
+    let checker = ManyProjectsStressTest.makeCheckerForStressTest true
+    let wholeProjectResults = checker.ParseAndCheckProject(ManyProjectsStressTest.jointProject.Options) |> Async.RunSynchronously
     let wholeProjectResults = checker.ParseAndCheckProject(ManyProjectsStressTest.jointProject.Options) |> Async.RunSynchronously
 
     wholeProjectResults .Errors.Length |> shouldEqual 0
-    wholeProjectResults.ProjectContext.GetReferencedAssemblies().Length |> shouldEqual (numProjectsForStressTest + 4)
+    wholeProjectResults.ProjectContext.GetReferencedAssemblies().Length |> shouldEqual (ManyProjectsStressTest.numProjectsForStressTest + 4)
 
 [<Test>]
 let ``Test ManyProjectsStressTest basic`` () = 
+
+    let checker = ManyProjectsStressTest.makeCheckerForStressTest true
 
     let wholeProjectResults = checker.ParseAndCheckProject(ManyProjectsStressTest.jointProject.Options) |> Async.RunSynchronously
 
@@ -260,6 +268,24 @@ let ``Test ManyProjectsStressTest basic`` () =
 
     [ for x in wholeProjectResults.AssemblySignature.Entities.[0].NestedEntities -> x.DisplayName ] |> shouldEqual []
 
+    [ for x in wholeProjectResults.AssemblySignature.Entities.[0].MembersFunctionsAndValues -> x.DisplayName ] 
+        |> shouldEqual ["p"]
+
+[<Test>]
+let ``Test ManyProjectsStressTest cache too small`` () = 
+
+    let checker = ManyProjectsStressTest.makeCheckerForStressTest false
+
+    // Because the cache is too small, we need explicit calls to KeepAlive to avoid disposal of project information
+    let disposals = 
+        [ for p in ManyProjectsStressTest.jointProject :: ManyProjectsStressTest.projects do
+             yield checker.KeepProjectAlive p.Options |> Async.RunSynchronously ]
+
+    let wholeProjectResults = checker.ParseAndCheckProject(ManyProjectsStressTest.jointProject.Options) |> Async.RunSynchronously
+
+    [ for x in wholeProjectResults.AssemblySignature.Entities -> x.DisplayName ] |> shouldEqual ["JointProject"]
+
+    [ for x in wholeProjectResults.AssemblySignature.Entities.[0].NestedEntities -> x.DisplayName ] |> shouldEqual []
 
     [ for x in wholeProjectResults.AssemblySignature.Entities.[0].MembersFunctionsAndValues -> x.DisplayName ] 
         |> shouldEqual ["p"]
@@ -267,7 +293,8 @@ let ``Test ManyProjectsStressTest basic`` () =
 [<Test>]
 let ``Test ManyProjectsStressTest all symbols`` () = 
 
-  for i in 1 .. 30 do 
+  let checker = ManyProjectsStressTest.makeCheckerForStressTest true
+  for i in 1 .. 10 do 
     printfn "stress test iteration %d (first may be slow, rest fast)" i
     let projectsResults = [ for p in ManyProjectsStressTest.projects -> p, checker.ParseAndCheckProject(p.Options) |> Async.RunSynchronously ]
     let jointProjectResults = checker.ParseAndCheckProject(ManyProjectsStressTest.jointProject.Options) |> Async.RunSynchronously

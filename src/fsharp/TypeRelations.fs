@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 /// Primary relations on types and signatures, with the exception of
 /// constraint solving and method overload resolution.
@@ -1150,7 +1150,7 @@ module DispatchSlotChecking =
                     |> List.filter (OverrideImplementsDispatchSlot g amap m dispatchSlot)  with
             | [ovd] -> 
                 if not ovd.IsCompilerGenerated then 
-                    let item = Item.MethodGroup(ovd.LogicalName,[dispatchSlot])
+                    let item = Item.MethodGroup(ovd.LogicalName,[dispatchSlot],None)
                     CallNameResolutionSink sink (ovd.Range,nenv,item,item,ItemOccurence.Implemented,denv,AccessorDomain.AccessibleFromSomewhere)
                 sink |> ignore
                 ()
@@ -2249,7 +2249,7 @@ let BuildNewDelegateExpr (eventInfoOpt:EventInfo option, g, amap, delegateTy, in
             if List.exists (isByrefTy g) delArgTys then
                     error(Error(FSComp.SR.tcFunctionRequiresExplicitLambda(List.length delArgTys),m)) 
 
-            let delArgVals = delArgTys |> List.map (fun argty -> fst (mkCompGenLocal m "delegateArg" argty)) 
+            let delArgVals = delArgTys |> List.mapi (fun i argty -> fst (mkCompGenLocal m ("delegateArg"^string i) argty)) 
             let expr = 
                 let args = 
                     match eventInfoOpt with 

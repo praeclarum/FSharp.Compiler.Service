@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 //-------------------------------------------------------------------------
 // Name environment and name resolution 
@@ -164,8 +164,8 @@ type Item =
     | Event of EventInfo
     /// Represents the resolution of a name to a property
     | Property of string * PropInfo list
-    /// Represents the resolution of a name to a group of methods
-    | MethodGroup of string * MethInfo list
+    /// Represents the resolution of a name to a group of methods. 
+    | MethodGroup of displayName: string * methods: MethInfo list * uninstantiatedMethodOpt: MethInfo option
     /// Represents the resolution of a name to a constructor
     | CtorGroup of string * MethInfo list
     /// Represents the resolution of a name to the fake constructor simulated for an interface type.
@@ -195,7 +195,7 @@ type Item =
 
     static member MakeMethGroup (nm,minfos:MethInfo list) = 
         let minfos = minfos |> List.sortBy (fun minfo -> minfo.NumArgs |> List.sum)
-        Item.MethodGroup (nm,minfos)
+        Item.MethodGroup (nm,minfos,None)
 
     static member MakeCtorGroup (nm,minfos:MethInfo list) = 
         let minfos = minfos |> List.sortBy (fun minfo -> minfo.NumArgs |> List.sum)
@@ -212,7 +212,7 @@ type Item =
         | Item.ILField finfo -> finfo.FieldName
         | Item.Event einfo -> einfo.EventName
         | Item.Property(nm,_) -> nm
-        | Item.MethodGroup(nm,_) -> nm
+        | Item.MethodGroup(nm,_,_) -> nm
         | Item.CtorGroup(nm,_) -> DemangleGenericTypeName nm
         | Item.FakeInterfaceCtor (AbbrevOrAppTy tcref)
         | Item.DelegateCtor (AbbrevOrAppTy tcref) -> DemangleGenericTypeName tcref.DisplayName
@@ -1099,13 +1099,15 @@ type ItemOccurence =
     | Pattern 
     /// Abstract slot gets implemented
     | Implemented
+    /// Result gets suppressed over this text range
+    | RelatedText
   
 /// An abstract type for reporting the results of name resolution and type checking.
 type ITypecheckResultsSink =
     abstract NotifyEnvWithScope : range * NameResolutionEnv * AccessorDomain -> unit
     abstract NotifyExprHasType : pos * TType * Tastops.DisplayEnv * NameResolutionEnv * AccessorDomain * range -> unit
-    abstract NotifyNameResolution : pos * Item * Item * ItemOccurence * Tastops.DisplayEnv * NameResolutionEnv * AccessorDomain * range -> unit
-    abstract NotifyFormatSpecifierLocation : range -> unit
+    abstract NotifyNameResolution : pos * Item * Item * ItemOccurence * Tastops.DisplayEnv * NameResolutionEnv * AccessorDomain * range * bool -> unit
+    abstract NotifyFormatSpecifierLocation : range * int -> unit
     abstract CurrentSource : string option
 
 let (|ValRefOfProp|_|) (pi : PropInfo) = pi.ArbitraryValRef
@@ -1138,12 +1140,12 @@ let rec (|FSharpPropertyUse|_|) (item : Item) =
 
 let (|MethodUse|_|) (item : Item) = 
     match item with
-    | Item.MethodGroup(_, [minfo]) -> Some(minfo)
+    | Item.MethodGroup(_, [minfo],_) -> Some(minfo)
     | _ -> None
 
 let (|FSharpMethodUse|_|) (item : Item) = 
     match item with
-    | Item.MethodGroup(_, [ValRefOfMeth vref]) -> Some(vref)
+    | Item.MethodGroup(_, [ValRefOfMeth vref],_) -> Some(vref)
     | Item.Value(vref) when vref.IsMember -> Some(vref)
     | _ -> None
 
@@ -1301,7 +1303,7 @@ type TcResolutions
 
 
 /// Represents container for all name resolutions that were met so far when typechecking some particular file
-type TcSymbolUses(g, capturedNameResolutions : ResizeArray<CapturedNameResolution>, formatSpecifierLocations: range[]) = 
+type TcSymbolUses(g, capturedNameResolutions : ResizeArray<CapturedNameResolution>, formatSpecifierLocations: (range * int)[]) = 
 
     member this.GetUsesOfSymbol(item) = 
         [| for cnr in capturedNameResolutions do
@@ -1312,7 +1314,7 @@ type TcSymbolUses(g, capturedNameResolutions : ResizeArray<CapturedNameResolutio
         [| for cnr in capturedNameResolutions do
               yield (cnr.Item, cnr.ItemOccurence, cnr.DisplayEnv, cnr.Range) |]
 
-    member this.GetFormatSpecifierLocations() =  formatSpecifierLocations
+    member this.GetFormatSpecifierLocationsAndArity() =  formatSpecifierLocations
 
 
 /// An accumulator for the results being emitted into the tcSink.
@@ -1344,7 +1346,7 @@ type TcResultsSinkImpl(g, ?source: string) =
             if allowedRange m then 
                 capturedExprTypings.Add((endPos,ty,denv,nenv,ad,m))
 
-        member sink.NotifyNameResolution(endPos,item,itemMethodGroup,occurenceType,denv,nenv,ad,m) = 
+        member sink.NotifyNameResolution(endPos,item,itemMethodGroup,occurenceType,denv,nenv,ad,m,replace) = 
             // Desugaring some F# constructs (notably computation expressions with custom operators)
             // results in duplication of textual variables. So we ensure we never record two name resolutions 
             // for the same identifier at the same location.
@@ -1363,12 +1365,16 @@ type TcResultsSinkImpl(g, ?source: string) =
                         res
                     | _ -> false
                 
+                if replace then 
+                    capturedNameResolutions.RemoveAll(fun cnr -> cnr.Range = m) |> ignore
+                    capturedMethodGroupResolutions.RemoveAll(fun cnr -> cnr.Range = m) |> ignore
+
                 if not alreadyDone then 
                     capturedNameResolutions.Add(CapturedNameResolution(endPos,item,occurenceType,denv,nenv,ad,m)) 
                     capturedMethodGroupResolutions.Add(CapturedNameResolution(endPos,itemMethodGroup,occurenceType,denv,nenv,ad,m)) 
 
-        member sink.NotifyFormatSpecifierLocation(m) = 
-            capturedFormatSpecifierLocations.Add(m)
+        member sink.NotifyFormatSpecifierLocation(m, numArgs) = 
+            capturedFormatSpecifierLocations.Add((m, numArgs))
 
         member sink.CurrentSource = source
 
@@ -1403,7 +1409,12 @@ let CallEnvSink (sink:TcResultsSink) (scopem,nenv,ad) =
 let CallNameResolutionSink (sink:TcResultsSink) (m:range,nenv,item,itemMethodGroup,occurenceType,denv,ad) = 
     match sink.CurrentSink with 
     | None -> () 
-    | Some sink -> sink.NotifyNameResolution(m.End,item,itemMethodGroup,occurenceType,denv,nenv,ad,m)  
+    | Some sink -> sink.NotifyNameResolution(m.End,item,itemMethodGroup,occurenceType,denv,nenv,ad,m,false)  
+
+let CallNameResolutionSinkReplacing (sink:TcResultsSink) (m:range,nenv,item,itemMethodGroup,occurenceType,denv,ad) = 
+    match sink.CurrentSink with 
+    | None -> () 
+    | Some sink -> sink.NotifyNameResolution(m.End,item,itemMethodGroup,occurenceType,denv,nenv,ad,m,true)  
 
 /// Report a specific expression typing at a source range
 let CallExprHasTypeSink (sink:TcResultsSink) (m:range,nenv,typ,denv,ad) = 
@@ -1432,7 +1443,7 @@ let CheckAllTyparsInferrable amap m item =
             let free = Zset.diff freeInDeclaringType.FreeTypars  freeInArgsAndRetType.FreeTypars
             free.IsEmpty)
 
-    | Item.MethodGroup(_,minfos) -> 
+    | Item.MethodGroup(_,minfos,_) -> 
         minfos |> List.forall (fun minfo -> 
             minfo.IsExtensionMember ||
             let fminst = minfo.FormalMethodInst
@@ -2569,15 +2580,15 @@ let ComputeItemRange wholem (lid: Ident list) rest =
 
 let FilterMethodGroups (ncenv:NameResolver) itemRange item staticOnly =
     match item with
-    | Item.MethodGroup(nm, minfos) -> 
+    | Item.MethodGroup(nm, minfos, orig) -> 
         let minfos = minfos |> List.filter  (fun minfo -> 
            staticOnly = (minfo.GetObjArgTypes(ncenv.amap, itemRange, minfo.FormalMethodInst) |> isNil))
-        Item.MethodGroup(nm, minfos)
+        Item.MethodGroup(nm, minfos, orig)
     | item -> item
 
 let NeedsOverloadResolution namedItem =
   match namedItem with
-  | Item.MethodGroup(_,_::_::_) 
+  | Item.MethodGroup(_,_::_::_,_) 
   | Item.CtorGroup(_,_::_::_)
   | Item.Property(_,_::_::_) -> true
   | _ -> false
@@ -2630,7 +2641,7 @@ let ResolveLongIdentAsExprAndComputeRange (sink:TcResultsSink) (ncenv:NameResolv
 
 let (|NonOverridable|_|) namedItem =
     match namedItem with
-    |   Item.MethodGroup(_,minfos) when minfos |> List.exists(fun minfo -> minfo.IsVirtual || minfo.IsAbstract) -> None
+    |   Item.MethodGroup(_,minfos,_) when minfos |> List.exists(fun minfo -> minfo.IsVirtual || minfo.IsAbstract) -> None
     |   Item.Property(_,pinfos) when pinfos |> List.exists(fun pinfo -> pinfo.IsVirtualProperty) -> None
     |   _ -> Some ()
 
@@ -2903,16 +2914,34 @@ let ResolveCompletionsInType (ncenv: NameResolver) nenv (completionTargets: Reso
                 AllMethInfosOfTypeInScope ncenv.InfoReader nenv (None,ad) PreferOverrides m typ 
                 |> List.filter minfoFilter
 
-            let addersAndRemovers = 
-                pinfoItems 
-                |> List.map (function Item.Event(FSEvent(_,_,addValRef,removeValRef)) -> [addValRef.LogicalName;removeValRef.LogicalName] | _ -> [])
-                |> List.concat
+            let minfos = 
+                let addersAndRemovers = 
+                    pinfoItems 
+                    |> List.map (function Item.Event(FSEvent(_,_,addValRef,removeValRef)) -> [addValRef.LogicalName;removeValRef.LogicalName] | _ -> [])
+                    |> List.concat
+                    |> set
 
-            match addersAndRemovers with
-            | [] -> minfos
-            | addersAndRemovers ->
-                let isNotAdderOrRemover (minfo: MethInfo) = not(addersAndRemovers |> List.exists (fun ar -> ar = minfo.LogicalName))
-                List.filter isNotAdderOrRemover minfos
+                if addersAndRemovers.IsEmpty then minfos
+                else minfos |> List.filter (fun minfo -> not (addersAndRemovers.Contains minfo.LogicalName))
+
+#if EXTENSIONTYPING
+            // Filter out the ones with mangled names from applying static parameters
+            let minfos = 
+                let methsWithStaticParams = 
+                    minfos 
+                    |> List.filter (fun minfo -> 
+                        match minfo.ProvidedStaticParameterInfo with 
+                        | Some (_methBeforeArguments, staticParams) -> staticParams.Length <> 0
+                        | _ -> false)
+                    |> List.map (fun minfo -> minfo.DisplayName)
+
+                if methsWithStaticParams.IsEmpty then minfos
+                else minfos |> List.filter (fun minfo -> 
+                        let nm = minfo.LogicalName
+                        not (nm.Contains "," && methsWithStaticParams |> List.exists (fun m -> nm.StartsWith(m))))
+#endif
+
+            minfos 
 
         else []
     // Partition methods into overload sets

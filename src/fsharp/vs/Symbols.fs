@@ -441,11 +441,11 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
                      let fsMeth = FSMeth (cenv.g, entityTy, v, None)
                      let item = 
                          if fsMeth.IsConstructor then  Item.CtorGroup (fsMeth.DisplayName, [fsMeth])                          
-                         else Item.MethodGroup (fsMeth.DisplayName, [fsMeth])
+                         else Item.MethodGroup (fsMeth.DisplayName, [fsMeth], None)
                      yield FSharpMemberOrFunctionOrValue(cenv,  M fsMeth, item) 
            else
                for minfo in GetImmediateIntrinsicMethInfosOfType (None, AccessibleFromSomeFSharpCode) cenv.g cenv.amap range0 entityTy do
-                    yield FSharpMemberOrFunctionOrValue(cenv,  M minfo, Item.MethodGroup (minfo.DisplayName,[minfo]))
+                    yield FSharpMemberOrFunctionOrValue(cenv,  M minfo, Item.MethodGroup (minfo.DisplayName,[minfo],None))
            let props = GetImmediateIntrinsicPropInfosOfType (None, AccessibleFromSomeFSharpCode) cenv.g cenv.amap range0 entityTy 
            let events = cenv.infoReader.GetImmediateIntrinsicEventsOfType (None, AccessibleFromSomeFSharpCode, range0, entityTy)
            for pinfo in props do
@@ -1142,11 +1142,11 @@ and FSharpMemberOrFunctionOrValue(cenv, d:FSharpMemberOrValData, item) =
             let nm = (match v with VRefNonLocal n -> n.ItemKey.PartialKey.LogicalName | _ -> "<local>")
             invalidOp (sprintf "The value or member '%s' does not exist or is in an unresolved assembly." nm)
 
-    let mkMethSym minfo = FSharpMemberOrFunctionOrValue(cenv, M minfo, Item.MethodGroup (minfo.DisplayName,[minfo]))
+    let mkMethSym minfo = FSharpMemberOrFunctionOrValue(cenv, M minfo, Item.MethodGroup (minfo.DisplayName, [minfo], None))
     let mkEventSym einfo = FSharpMemberOrFunctionOrValue(cenv, E einfo, Item.Event einfo)
 
     new (cenv, vref) = FSharpMemberFunctionOrValue(cenv, V vref, Item.Value vref)
-    new (cenv, minfo) =  FSharpMemberFunctionOrValue(cenv, M minfo, Item.MethodGroup(minfo.LogicalName, [minfo]))
+    new (cenv, minfo) =  FSharpMemberFunctionOrValue(cenv, M minfo, Item.MethodGroup(minfo.LogicalName, [minfo], None))
 
     member __.IsUnresolved = 
         isUnresolved()
@@ -1162,7 +1162,7 @@ and FSharpMemberOrFunctionOrValue(cenv, d:FSharpMemberOrValData, item) =
         match d with
         | M m ->
             match item with
-            | Item.MethodGroup (_name, methodInfos) ->
+            | Item.MethodGroup (_name, methodInfos, _) ->
                 let methods =
                     if matchParameterNumber then
                         methodInfos
@@ -1862,13 +1862,26 @@ and FSharpType(cenv, typ:TType) =
     member private typ.AdjustType(t) = 
         FSharpType(typ.cenv, t)
 
+    // Note: This equivalence relation is modulo type abbreviations
     override x.Equals(other : obj) =
         box x === other ||
         match other with
         |   :? FSharpType as t -> typeEquiv cenv.g typ t.V
         |   _ -> false
 
-    override x.GetHashCode() = hash x
+    // Note: This equivalence relation is modulo type abbreviations. The hash is less than perfect.
+    override x.GetHashCode() = 
+        let rec hashType typ = 
+            let typ = stripTyEqnsWrtErasure EraseNone cenv.g typ
+            match typ with
+            | TType_forall _ ->  10000
+            | TType_var tp  -> 10100 + int32 tp.Stamp
+            | TType_app (tc1,b1)  -> 10200 + int32 tc1.Stamp + List.sumBy hashType b1
+            | TType_ucase _   -> 10300  // shouldn't occur in symbols
+            | TType_tuple l1 -> 10400 + List.sumBy hashType l1
+            | TType_fun (dty,rty) -> 10500 + hashType dty + hashType rty
+            | TType_measure _ -> 10600 
+        hashType typ
 
     member x.Format(denv: FSharpDisplayContext) = 
        protect <| fun () -> 
@@ -2102,7 +2115,7 @@ type FSharpSymbol with
         | Item.Property(_,pinfo :: _) -> 
             FSharpMemberOrFunctionOrValue(cenv,  P pinfo, item) :> _
             
-        | Item.MethodGroup(_,minfo :: _) -> 
+        | Item.MethodGroup(_,minfo :: _, _) -> 
             FSharpMemberOrFunctionOrValue(cenv,  M minfo, item) :> _
 
         | Item.CtorGroup(_,cinfo :: _) -> 
@@ -2148,7 +2161,7 @@ type FSharpSymbol with
         | Item.UnqualifiedType []
         | Item.ModuleOrNamespaces []
         | Item.Property (_,[])
-        | Item.MethodGroup (_,[])
+        | Item.MethodGroup (_,[],_)
         | Item.CtorGroup (_,[])
         // These cases cover misc. corned cases (non-symbol types)
         | Item.Types _

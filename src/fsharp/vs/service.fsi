@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 //----------------------------------------------------------------------------
 // SourceCodeServices API to the compiler as an incremental service for parsing,
@@ -49,8 +49,11 @@ type FSharpMethodGroupItem =
     /// The parameters of the method in the overload set
     member Parameters: FSharpMethodGroupItemParameter[]
 
-    /// Indicates that this not really a method, but actually a static arguments list, like TP<42,"foo">
-    member IsStaticArguments: bool
+    /// Does the method support an arguments list?  This is always true except for static type instantiations like TP<42,"foo">.
+    member HasParameters: bool
+
+    /// Does the type name or method support a static arguments list, like TP<42,"foo"> or conn.CreateCommand<42, "foo">(arg1, arg2)?
+    member StaticParameters: FSharpMethodGroupItemParameter[]
 
     [<Obsolete("This member has been renamed to 'TypeText'")>]
     member Type: string
@@ -99,6 +102,7 @@ type FSharpProjectContext =
 
     /// Get the accessibility rights for this project context w.r.t. InternalsVisibleTo attributes granting access to other assemblies
     member AccessibilityRights : FSharpAccessibilityRights
+
 
 /// Represents the use of an F# symbol from F# source code
 [<Sealed>]
@@ -156,6 +160,11 @@ type FSharpCheckFileResults =
     /// Indicates whether type checking successfully occured with some results returned. If false, indicates that 
     /// an unrecoverable error in earlier checking/parsing/resolution steps.
     member HasFullTypeCheckInfo: bool
+
+    /// Indicates the set of files which must be watched to accurately track changes that affect these results,
+    /// Clients interested in reacting to updates to these files should watch these files and take actions as described
+    /// in the documentation for compiler service.
+    member DependencyFiles : string list
 
     /// <summary>Get the items for a declaration list</summary>
     ///
@@ -260,14 +269,17 @@ type FSharpCheckFileResults =
     member GetExtraColorizationsAlternate : unit -> (range * FSharpTokenColorKind)[]
 
     /// <summary>Get the locations of format specifiers</summary>
+    [<System.Obsolete("This member has been replaced by GetFormatSpecifierLocationsAndArity, which returns both range and arity of specifiers")>]
     member GetFormatSpecifierLocations : unit -> range[]
+
+    /// <summary>Get the locations of and number of arguments associated with format specifiers</summary>
+    member GetFormatSpecifierLocationsAndArity : unit -> (range*int)[]
 
     /// Get all textual usages of all symbols throughout the file
     member GetAllUsesOfAllSymbolsInFile : unit -> Async<FSharpSymbolUse[]>
 
     /// Get the textual usages that resolved to the given symbol throughout the file
     member GetUsesOfSymbolInFile : symbol:FSharpSymbol -> Async<FSharpSymbolUse[]>
-
 
     [<System.Obsolete("Please change to use GetSymbolUseAtLocation(...).Symbol")>]
     member GetSymbolAtLocationAlternate  : line:int * colAtEndOfNames:int * lineText:string * names:string list -> Async<FSharpSymbol option>
@@ -328,6 +340,10 @@ type FSharpCheckProjectResults =
     /// Indicates if critical errors existed in the project options
     member HasCriticalErrors : bool 
 
+    /// Indicates the set of files which must be watched to accurately track changes that affect these results,
+    /// Clients interested in reacting to updates to these files should watch these files and take actions as described
+    /// in the documentation for compiler service.
+    member DependencyFiles : string list
 
 /// <summary>Unused in this API</summary>
 type UnresolvedReferencesSet 
@@ -425,7 +441,7 @@ type FSharpChecker =
     ///
     /// <param name="parsed">The results of ParseFileInProject for this file.</param>
     /// <param name="filename">The name of the file in the project whose source is being checked.</param>
-    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentTypeCheckResultsForFile when looking up the file.</param>
+    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentCheckResultsForFile when looking up the file.</param>
     /// <param name="source">The full source for the file.</param>
     /// <param name="options">The options for the project or script.</param>
     /// <param name="isResultObsolete">
@@ -455,7 +471,7 @@ type FSharpChecker =
     ///
     /// <param name="parsed">The results of ParseFileInProject for this file.</param>
     /// <param name="filename">The name of the file in the project whose source is being checked.</param>
-    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentTypeCheckResultsForFile when looking up the file.</param>
+    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentCheckResultsForFile when looking up the file.</param>
     /// <param name="source">The full source for the file.</param>
     /// <param name="options">The options for the project or script.</param>
     /// <param name="isResultObsolete">
@@ -484,7 +500,7 @@ type FSharpChecker =
     /// </summary>
     ///
     /// <param name="filename">The name of the file in the project whose source is being checked.</param>
-    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentTypeCheckResultsForFile when looking up the file.</param>
+    /// <param name="fileversion">An integer that can be used to indicate the version of the file. This will be returned by TryGetRecentCheckResultsForFile when looking up the file.</param>
     /// <param name="source">The full source for the file.</param>
     /// <param name="options">The options for the project or script.</param>
     /// <param name="isResultObsolete">
@@ -506,6 +522,13 @@ type FSharpChecker =
     ///
     /// <param name="options">The options for the project or script.</param>
     member ParseAndCheckProject : options: FSharpProjectOptions * cancellationToken : System.Threading.CancellationToken -> Async<FSharpCheckProjectResults>
+
+    /// <summary>
+    /// <para>Create resources for the project and keep the project alive until the returned object is disposed.</para>
+    /// </summary>
+    ///
+    /// <param name="options">The options for the project or script.</param>
+    member KeepProjectAlive : options: FSharpProjectOptions -> Async<IDisposable>
 
     /// <summary>
     /// <para>For a given script file, get the FSharpProjectOptions implied by the #load closure.</para>
@@ -531,8 +554,6 @@ type FSharpChecker =
     /// so that references are re-resolved.</param>
     member GetProjectOptionsFromCommandLineArgs : projectFileName: string * argv: string[] * ?loadedTimeStamp: DateTime -> FSharpProjectOptions
            
-#if SILVERLIGHT
-#else
 #if FX_ATLEAST_45
     /// <summary>
     /// <para>Get the project options implied by a standard F# project file in the xbuild/msbuild format.</para>
@@ -544,7 +565,6 @@ type FSharpChecker =
     /// so that an 'unload' and 'reload' action will cause the project to be considered as a new project.</param>
     [<Obsolete("This functionality has been moved to the new NuGet package 'FSharp.Compiler.Service.ProjectCracker'", true)>]
     member GetProjectOptionsFromProjectFile : projectFileName: string * ?properties : (string * string) list * ?loadedTimeStamp: DateTime -> FSharpProjectOptions
-#endif
 #endif
 
     [<Obsolete("This member has been renamed to 'GetProjectOptionsFromScript'")>]
@@ -577,6 +597,9 @@ type FSharpChecker =
     /// <param name="filename">The filename for the file.</param>
     /// <param name="options">The options for the project or script, used to determine active --define conditionals and other options relevant to parsing.</param>
     /// <param name="source">Optionally, specify source that must match the previous parse precisely.</param>
+    member TryGetRecentCheckResultsForFile : filename: string * options:FSharpProjectOptions * ?source: string -> (FSharpParseFileResults * FSharpCheckFileResults * (*version*)int) option
+
+    [<Obsolete("Renamed to TryGetRecentCheckResultsForFile")>]
     member TryGetRecentTypeCheckResultsForFile : filename: string * options:FSharpProjectOptions * ?source: string -> (FSharpParseFileResults * FSharpCheckFileResults * (*version*)int) option
 
     /// This function is called when the entire environment is known to have changed for reasons not encoded in the ProjectOptions of any project/compilation.

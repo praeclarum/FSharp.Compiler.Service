@@ -156,6 +156,7 @@ let ``Project file parsing -- references``() =
   checkOption references "mscorlib.dll"
   checkOption references "System.Core.dll"
   checkOption references "System.dll"
+  printfn "Project file parsing -- references: references = %A" references
   references |> should haveLength 4
   p.ReferencedProjects |> should be Empty
 
@@ -169,6 +170,7 @@ let ``Project file parsing -- 2nd level references``() =
   checkOption references "System.Core.dll"
   checkOption references "System.dll"
   checkOption references "Test1.dll"
+  printfn "Project file parsing -- references: references = %A" references
   references |> should haveLength 5
   p.ReferencedProjects |> should haveLength 1
   (snd p.ReferencedProjects.[0]).ProjectFileName |> should contain (normalizePath (__SOURCE_DIRECTORY__ + @"/data/Test1.fsproj"))
@@ -397,6 +399,15 @@ let ``Project file parsing -- project file contains project reference to out-of-
     let references = getReferencedFilenamesAndContainingFolders p.OtherOptions |> set
     // Check the reference is to a debug DLL
     references |> should contain ("TestTP.dll", "Debug")
+
+[<Test>]
+let ``Project file parsing -- space in file name``() =
+  let p = ProjectCracker.GetProjectOptionsFromProjectFile(__SOURCE_DIRECTORY__ + @"/data/Space in name.fsproj")
+
+  p.OtherOptions
+  |> getCompiledFilenames
+  |> set
+  |> should equal (set [ "Test2File1.fs"; "Test2File2.fs" ])
 
 #endif
 

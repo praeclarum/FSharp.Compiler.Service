@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
   
 //-------------------------------------------------------------------------
 // Defines the typed abstract syntax trees used throughout the F# compiler.
@@ -1681,11 +1681,15 @@ and Construct =
             let isMeasure = 
                 st.PApplyWithProvider((fun (st,provider) -> 
                     let findAttrib (ty:System.Type) (a:CustomAttributeData) = (a.Constructor.DeclaringType.FullName = ty.FullName)  
+                    let ty = st.RawSystemType
+#if FX_RESHAPED_REFLECTION
+                    let ty = ty.GetTypeInfo()
+#endif
 #if FX_NO_CUSTOMATTRIBUTEDATA
-                    provider.GetMemberCustomAttributesData(st.RawSystemType) 
+                    provider.GetMemberCustomAttributesData(ty) 
 #else
                     ignore provider
-                    st.RawSystemType.GetCustomAttributesData()
+                    ty.GetCustomAttributesData()
 #endif
                         |> Seq.exists (findAttrib typeof<Microsoft.FSharp.Core.MeasureAttribute>)), m)
                   .PUntaintNoFailure(fun x -> x)
@@ -3197,7 +3201,7 @@ and UnionCaseRef =
 
     member x.DefinitionRange = x.UnionCase.DefinitionRange
 
-    member x.SigRange = x.UnionCase.DefinitionRange
+    member x.SigRange = x.UnionCase.SigRange
 
     member x.Index = 
         try 
@@ -3227,7 +3231,7 @@ and RecdFieldRef =
 
     member x.DefinitionRange = x.RecdField.DefinitionRange
 
-    member x.SigRange = x.RecdField.DefinitionRange
+    member x.SigRange = x.RecdField.SigRange
 
     member x.Index =
         let (RFRef(tcref,id)) = x

@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 namespace Microsoft.FSharp.Compiler.SourceCodeServices
 open System
@@ -6,7 +6,15 @@ open System.Diagnostics
 open System.Globalization
 open System.Threading
 open Microsoft.FSharp.Control
+open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.Lib
+
+// TODO: not sure why Trace is not defined in System.Diagnostics, why do we have to redefine it here
+type internal Trace() =
+    [<Conditional("TRACE")>]
+    static member TraceInformation(format: string, [<ParamArray>] args: obj []) =
+        let s = String.Format(format, args)
+        ignore s
 
 /// Represents the capability to schedule work in the compiler service operations queue for the compilation thread
 type internal IReactorOperations = 
@@ -34,16 +42,16 @@ type Reactor() =
 
     // We need to store the culture for the VS thread that is executing now,
     // so that when the reactor picks up a thread from the threadpool we can set the culture
-    let culture = new CultureInfo(Thread.CurrentThread.CurrentUICulture.LCID)
+    let culture = new CultureInfo(CultureInfo.CurrentUICulture.Name)
 
-    /// Mailbox dispatch function.                
+    /// Mailbox dispatch function.
     let builder = 
-        MailboxProcessor<_>.Start <| fun inbox ->        
-                                             
+        MailboxProcessor<_>.Start <| fun inbox ->
+
         // Async workflow which receives messages and dispatches to worker functions.
         let rec loop (bgOpOpt, onComplete, bg) = 
             async { Trace.TraceInformation("Reactor: receiving..., remaining {0}, mem {1}, gc2 {2}", inbox.CurrentQueueLength, GC.GetTotalMemory(false)/1000000L, GC.CollectionCount(2))
-                        
+
                     // Messages always have priority over the background op.
                     let! msg = 
                         async { match bgOpOpt, onComplete with 
@@ -55,8 +63,11 @@ type Reactor() =
                                 | Some _, _ -> 
                                     let timeout = (if bg then 0 else pauseBeforeBackgroundWork)
                                     return! inbox.TryReceive(timeout) }
+#if FX_RESHAPED_GLOBALIZATION
+                    CultureInfo.CurrentUICulture <- culture
+#else
                     Thread.CurrentThread.CurrentUICulture <- culture
-
+#endif
                     match msg with
                     | Some (SetBackgroundOp bgOpOpt) -> 
                         Trace.TraceInformation("Reactor: --> set background op, remaining {0}, mem {1}, gc2 {2}", inbox.CurrentQueueLength, GC.GetTotalMemory(false)/1000000L, GC.CollectionCount(2))
@@ -100,7 +111,6 @@ type Reactor() =
                 with e -> 
                     Debug.Assert(false,String.Format("unexpected failure in reactor loop {0}, restarting", e))
         }
-            
 
     // [Foreground Mailbox Accessors] -----------------------------------------------------------                
     member r.SetBackgroundOp(build) = 
@@ -125,8 +135,8 @@ type Reactor() =
 
     // This is for testing only
     member r.CompleteAllQueuedOps() =
-        Trace.TraceInformation("Reactor: enqueue wait for background, length {0}", builder.CurrentQueueLength)
-        builder.PostAndReply WaitForBackgroundOpCompletion 
+        Trace.TraceInformation("Reactor: enqueue wait for all ops, length {0}", builder.CurrentQueueLength)
+        builder.PostAndReply CompleteAllQueuedOps
 
     member r.EnqueueAndAwaitOpAsync (desc, f) = 
         async { 

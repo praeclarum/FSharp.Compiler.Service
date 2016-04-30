@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 module internal Microsoft.FSharp.Compiler.Lib
 
@@ -22,6 +22,15 @@ let condition _s =
 let GetEnvInteger e dflt = match System.Environment.GetEnvironmentVariable(e) with null -> dflt | t -> try int t with _ -> dflt
 
 let dispose (x:System.IDisposable) = match x with null -> () | x -> x.Dispose()
+
+type SaveAndRestoreConsoleEncoding () =
+    let savedOut = System.Console.Out
+
+    interface System.IDisposable with
+        member this.Dispose() = 
+            try 
+                System.Console.SetOut(savedOut)
+            with _ -> ()
 
 //-------------------------------------------------------------------------
 // Library: bits
@@ -535,8 +544,14 @@ module UnmanagedProcessExecutionOptions =
     extern UInt32 private GetLastError()
 
     // Translation of C# from http://swikb/v1/DisplayOnlineDoc.aspx?entryID=826 and copy in bug://5018
+#if FX_NO_SECURITY_PERMISSIONS
+#else
     [<System.Security.Permissions.SecurityPermission(System.Security.Permissions.SecurityAction.Assert,UnmanagedCode = true)>] 
-    let EnableHeapTerminationOnCorruption() =        
+#endif
+    let EnableHeapTerminationOnCorruption() =
+#if NO_HEAPTERMINATION
+        ()
+#else
         if (System.Environment.OSVersion.Version.Major >= 6 && // If OS is Vista or higher
             System.Environment.Version.Major < 3) then         // and CLR not 3.0 or higher 
             // "The flag HeapSetInformation sets is available in Windows XP SP3 and later.
@@ -555,4 +570,5 @@ module UnmanagedProcessExecutionOptions =
                             "Unable to enable unmanaged process execution option TerminationOnCorruption. " + 
                             "HeapSetInformation() returned FALSE; LastError = 0x" + 
                             GetLastError().ToString("X").PadLeft(8,'0') + "."))
+#endif
 

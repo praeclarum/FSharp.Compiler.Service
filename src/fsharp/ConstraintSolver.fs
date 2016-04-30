@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 module internal Microsoft.FSharp.Compiler.ConstraintSolver
 
@@ -2004,7 +2004,7 @@ and ReportNoCandidatesError (csenv:ConstraintSolverEnv) (nUnnamedCallerArgs,nNam
                                 let missingArgs = List.drop nReqd cmeth.AllUnnamedCalledArgs
                                 match NamesOfCalledArgs missingArgs with 
                                 | [] -> (false, "")
-                                | names -> (true, String.concat ";" (List.map textOfId names))
+                                | names -> (true, String.concat ";" (pathOfLid names))
                             else (false, "")
 
                         match suggestNamesForMissingArguments with

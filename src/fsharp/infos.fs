@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 /// tinfos, minfos, finfos, pinfos - summaries of information for references
 /// to .NET and F# constructs.
@@ -23,9 +23,14 @@ open Microsoft.FSharp.Compiler.TcGlobals
 open Microsoft.FSharp.Compiler.AbstractIL.IL 
 open Microsoft.FSharp.Compiler.Lib
 open Microsoft.FSharp.Core.Printf
+
 #if EXTENSIONTYPING
 open Microsoft.FSharp.Compiler.ExtensionTyping
 open Microsoft.FSharp.Core.CompilerServices
+#endif
+
+#if FX_RESHAPED_REFLECTION
+    open Microsoft.FSharp.Core.ReflectionAdapters
 #endif
 
 //-------------------------------------------------------------------------
@@ -499,9 +504,12 @@ type OptionalArgInfo =
                         let ty = destByrefTy g ty
                         PassByRef (ty, analyze ty)
                     elif isObjTy g ty then
-                        if   TryFindILAttributeOpt g.attrib_IDispatchConstantAttribute ilParam.CustomAttrs then WrapperForIDispatch
-                        elif TryFindILAttributeOpt g.attrib_IUnknownConstantAttribute ilParam.CustomAttrs then WrapperForIUnknown
-                        else MissingValue
+                        match ilParam.Marshal with
+                        | Some(ILNativeType.IUnknown | ILNativeType.IDispatch | ILNativeType.Interface) -> Constant(ILFieldInit.Null)
+                        | _ -> 
+                            if   TryFindILAttributeOpt g.attrib_IUnknownConstantAttribute ilParam.CustomAttrs then WrapperForIUnknown
+                            elif TryFindILAttributeOpt g.attrib_IDispatchConstantAttribute ilParam.CustomAttrs then WrapperForIDispatch
+                            else MissingValue
                     else 
                         DefaultValue
                 CallerSide (analyze (ImportTypeFromMetadata amap m ilScope ilTypeInst [] ilParam.Type))
@@ -850,7 +858,7 @@ type MethInfo =
 #if EXTENSIONTYPING
         | ProvidedMeth (_, mb, _, m) -> 
             let staticParams = mb.PApplyWithProvider((fun (mb,provider) -> mb.GetStaticParametersForMethod(provider)), range=m) 
-            let staticParams = staticParams.PApplyArray(id, "GetStaticParameters", m)
+            let staticParams = staticParams.PApplyArray(id, "GetStaticParametersForMethod", m)
             match staticParams with 
             | [| |] -> None
             | _ -> Some (mb,staticParams)

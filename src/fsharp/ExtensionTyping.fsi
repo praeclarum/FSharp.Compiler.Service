@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 // Extension typing, validation of extension types, etc.
 
@@ -183,7 +183,10 @@ module internal ExtensionTyping =
         ProvidedMethodInfo = 
         inherit ProvidedMethodBase
         member ReturnType : ProvidedType
+#if FX_NO_REFLECTION_METADATA_TOKENS
+#else
         member MetadataToken : int
+#endif
 
     and [<AllowNullLiteral; Sealed; Class>] 
         ProvidedParameterInfo = 

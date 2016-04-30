@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 /// Diagnostics from the AbsIL toolkit. You can reset the diagnostics 
 /// stream to point elsewhere, or turn it
@@ -9,8 +9,6 @@
 module internal Microsoft.FSharp.Compiler.AbstractIL.Diagnostics
 
 open System.IO
-open Microsoft.FSharp.Compiler.AbstractIL
-open Microsoft.FSharp.Compiler.AbstractIL.Internal 
 open Microsoft.FSharp.Core.Printf
 
 val public setDiagnosticsChannel: TextWriter option -> unit
@@ -19,4 +17,3 @@ val public dprintfn: TextWriterFormat<'a> -> 'a
 val public dprintf: TextWriterFormat<'a> -> 'a 
 
 val public dprintn: string -> unit
-

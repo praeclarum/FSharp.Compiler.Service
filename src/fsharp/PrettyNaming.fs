@@ -1,9 +1,8 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 //----------------------------------------------------------------------------
 // Some general F# utilities for mangling / unmangling / manipulating names.
 //--------------------------------------------------------------------------
-
 
 /// Anything to do with special names of identifiers and other lexical rules 
 module (*internal*) Microsoft.FSharp.Compiler.PrettyNaming
@@ -14,6 +13,10 @@ module (*internal*) Microsoft.FSharp.Compiler.PrettyNaming
     open System.Globalization
     open System.Collections.Generic
     open System.Collections.Concurrent
+
+#if FX_RESHAPED_REFLECTION
+    open Microsoft.FSharp.Core.ReflectionAdapters
+#endif
 
     //------------------------------------------------------------------------
     // Operator name compilation

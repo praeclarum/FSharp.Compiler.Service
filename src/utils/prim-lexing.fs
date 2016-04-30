@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft Corporation.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 #nowarn "47" // recursive initialization of LexBuffer
 
@@ -215,7 +215,12 @@ namespace Internal.Utilities.Text.Lexing
                         // which covers all Unicode characters not covered in other
                         // ways
                         let baseForUnicodeCategories = numLowUnicodeChars+numSpecificUnicodeChars*2
-                        let unicodeCategory = System.Char.GetUnicodeCategory(inp)
+                        let unicodeCategory = 
+#if FX_RESHAPED_GLOBALIZATION
+                            System.Globalization.CharUnicodeInfo.GetUnicodeCategory(inp)
+#else
+                            System.Char.GetUnicodeCategory(inp)
+#endif
                         //System.Console.WriteLine("inp = {0}, unicodeCategory = {1}", [| box inp; box unicodeCategory |]);
                         int trans.[state].[baseForUnicodeCategories + int32 unicodeCategory]
                     else 

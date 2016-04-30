@@ -1,3 +1,29 @@
+#### 4.0.1
+* Integrate Microsoft\visualfsharp and fsharp\fsharp to master (including portable PDB)
+* Remove .NET Framework 4.0 support (now needs .NET Framework 4.5)
+
+#### 4.0.0
+* Integrate Microsoft\visualfsharp and fsharp\fsharp to master
+
+#### 3.0.0.0
+* #538 - BackgroundCompiler takes a very long time on a big solution with a very connected project dependency graph
+* #544 - Losing operator call when one of operands is application of a partially applied function
+* #534 - Function valued property erasing calls
+* #495 - Detupling missing when calling a module function value
+* #543 - Tuple not being destructured in AST
+* #541 - Results of multiple calls to active pattern are always bound to variable with same name
+* #539 - BasicPatterns.NewDelegate shows same value for different arguments
+
+#### 2.0.0.6
+* #530 - Adjust ProjectCracker NuGet for VS/NuGet
+
+#### 2.0.0.5
+* #527 - Provide API that includes printf specifier arities along with ranges
+
+#### 2.0.0.4
+* #519 - Change nuget layout for ProjectCracker package
+* #523 - Project cracking: spaces in file paths
+
 #### 2.0.0.3
 * #508 - Integrate visualfsharp/master removal of Silverlight #if
 * #513 - Make CrackerTool `internal` to prevent accidental usage

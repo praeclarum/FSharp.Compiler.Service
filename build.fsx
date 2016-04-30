@@ -27,7 +27,7 @@ let gitHome = "https://github.com/" + gitOwner
 let gitName = "FSharp.Compiler.Service"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.githubusercontent.com/fsharp"
 
-let netFrameworks = ["v4.0"; "v4.5"]
+let netFrameworks = [(* "v4.0"; *) "v4.5"]
 
 // --------------------------------------------------------------------------------------
 // The rest of the code is standard F# build script 
@@ -184,7 +184,7 @@ Target "ReleaseDocs" (fun _ ->
 #load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 open Octokit
 
-Target "Release" (fun _ ->
+Target "GitHubRelease" (fun _ ->
     let user =
         match getBuildParam "github-user" with
         | s when not (String.IsNullOrWhiteSpace s) -> s
@@ -214,17 +214,53 @@ Target "Release" (fun _ ->
 )
 
 // --------------------------------------------------------------------------------------
+// .NET CLI and .NET Core
+
+let isDotnetCliInstalled = (try Shell.Exec("dotnet", "--info") = 0 with _ -> false)
+let assertExitCodeZero x = if x = 0 then () else failwithf "Command failed with exit code %i" x
+
+Target "DotnetCliBuild" (fun _ ->
+    let fsLex  = @"lib/bootstrap/4.0/fslex.exe"
+    let fsYacc = @"lib/bootstrap/4.0/fsyacc.exe"
+    let lexArgs = @" --lexlib Internal.Utilities.Text.Lexing"
+    let yaccArgs = @" --internal --parslib Internal.Utilities.Text.Parsing"
+    let module1 = @" --module Microsoft.FSharp.Compiler.AbstractIL.Internal.AsciiParser"
+    let module2 = @" --module Microsoft.FSharp.Compiler.Parser"
+    let module3 = @" --module Microsoft.FSharp.Compiler.PPParser"
+    let open1 = @" --open Microsoft.FSharp.Compiler.AbstractIL"
+    let open2 = @" --open Microsoft.FSharp.Compiler"
+    let open3 = @" --open Microsoft.FSharp.Compiler"
+    let options = " --configuration Release"
+    
+    let outPath = @"src/fsharp/FSharp.Compiler.Service.netcore/"
+    Shell.Exec("dotnet", "restore", outPath) |> ignore //assertExitCodeZero
+
+    Shell.Exec("dotnet", "fssrgen ../FSComp.txt ./FSComp.fs ./FSComp.resx", outPath) |> assertExitCodeZero
+    Shell.Exec("dotnet", "fssrgen ../fsi/FSIstrings.txt ./FSIstrings.fs ./FSIstrings.resx", outPath) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../lex.fsl --unicode" + lexArgs + " -o lex.fs", outPath) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../pplex.fsl --unicode" + lexArgs + " -o pplex.fs", outPath) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../../absil/illex.fsl --unicode" + lexArgs + " -o illex.fs", outPath) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../../absil/ilpars.fsy" + lexArgs + yaccArgs + module1 + open1 + " -o ilpars.fs", outPath) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../pars.fsy" + lexArgs + yaccArgs + module2 + open2 + " -o pars.fs", outPath) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../pppars.fsy" + lexArgs + yaccArgs + module3 + open3 + " -o pppars.fs", outPath) |> assertExitCodeZero
+
+    Shell.Exec("dotnet", "--verbose pack" + options, outPath) |> assertExitCodeZero
+)
+
+// --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
 Target "Prepare" DoNothing
 Target "PrepareRelease" DoNothing
 Target "All" DoNothing
+Target "Release" DoNothing
 
 "Clean"
   =?> ("BuildVersion", isAppVeyorBuild)
   ==> "AssemblyInfo"
   ==> "GenerateFSIStrings"
   ==> "Prepare"
+  =?> ("DotnetCliBuild", isDotnetCliInstalled)
   ==> "Build"
   ==> "RunTests"
   ==> "All"
@@ -233,13 +269,14 @@ Target "All" DoNothing
   ==> "PrepareRelease" 
   ==> "SourceLink"
   ==> "NuGet"
+  ==> "GitHubRelease"
+  ==> "PublishNuGet"
   ==> "Release"
 
 "CleanDocs"
   ==> "GenerateDocsJa"
   ==> "GenerateDocs"
   ==> "ReleaseDocs"
-  ==> "PublishNuGet"
   ==> "Release"
 
 RunTargetOrDefault "All"
