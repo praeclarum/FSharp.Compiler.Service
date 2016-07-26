@@ -9,6 +9,9 @@ open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library
 open Microsoft.FSharp.Compiler.AbstractIL.IL
 open Microsoft.FSharp.Compiler.Infos
+open Microsoft.FSharp.Compiler.AttributeChecking
+open Microsoft.FSharp.Compiler.AccessibilityLogic
+open Microsoft.FSharp.Compiler.InfoReader
 open Microsoft.FSharp.Compiler.Range
 open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.CompileOps
@@ -312,6 +315,10 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
         isResolved() &&
         isArrayTyconRef cenv.g entity
 
+    member __.ArrayRank  = 
+        checkIsResolved()
+        rankOfArrayTyconRef cenv.g entity
+
 #if EXTENSIONTYPING
     member __.IsProvided  = 
         isResolved() &&
@@ -388,7 +395,7 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
     member __.FSharpDelegateSignature =
         checkIsResolved()
         match entity.TypeReprInfo with 
-        | TFsObjModelRepr r when entity.IsFSharpDelegateTycon -> 
+        | TFSharpObjectRepr r when entity.IsFSharpDelegateTycon -> 
             match r.fsobjmodel_kind with 
             | TTyconDelegate ss -> FSharpDelegateSignature(cenv,  ss)
             | _ -> invalidOp "not a delegate type"
@@ -525,7 +532,7 @@ and FSharpEntity(cenv:cenv, entity:EntityRef) =
 
     member __.Attributes = 
         if isUnresolved() then makeReadOnlyCollection[] else
-        AttributeChecking.GetAttribInfosOfEntity cenv.g cenv.amap range0 entity
+        GetAttribInfosOfEntity cenv.g cenv.amap range0 entity
         |> List.map (fun a -> FSharpAttribute(cenv,  a))
         |> makeReadOnlyCollection
 
@@ -824,7 +831,7 @@ and FSharpAccessibility(a:Accessibility, ?isProtected) =
 
     override x.ToString() = stringOfAccess a
 
-and [<Class>] FSharpAccessibilityRights(thisCcu: CcuThunk, ad:Infos.AccessorDomain) =
+and [<Class>] FSharpAccessibilityRights(thisCcu: CcuThunk, ad:AccessorDomain) =
     member internal __.ThisCcu = thisCcu
     member internal __.Contents = ad
 
@@ -1553,7 +1560,7 @@ and FSharpMemberOrFunctionOrValue(cenv, d:FSharpMemberOrValData, item) =
         match d with 
         | P p -> 
             
-            [ [ for (ParamData(isParamArrayArg,isOutArg,optArgInfo,nmOpt,_reflArgInfo,pty)) in p.GetParamDatas(cenv.amap,range0) do 
+            [ [ for (ParamData(isParamArrayArg,isOutArg,optArgInfo,_callerInfoInfo,nmOpt,_reflArgInfo,pty)) in p.GetParamDatas(cenv.amap,range0) do 
                 // INCOMPLETENESS: Attribs is empty here, so we can't look at attributes for
                 // either .NET or F# parameters
                 let argInfo : ArgReprInfo = { Name=nmOpt; Attribs= [] }
@@ -1565,7 +1572,7 @@ and FSharpMemberOrFunctionOrValue(cenv, d:FSharpMemberOrValData, item) =
         | M m -> 
             [ for argtys in m.GetParamDatas(cenv.amap,range0,m.FormalMethodInst) do 
                  yield
-                   [ for (ParamData(isParamArrayArg,isOutArg,optArgInfo,nmOpt,_reflArgInfo,pty)) in argtys do 
+                   [ for (ParamData(isParamArrayArg,isOutArg,optArgInfo,_callerInfoInfo,nmOpt,_reflArgInfo,pty)) in argtys do 
                 // INCOMPLETENESS: Attribs is empty here, so we can't look at attributes for
                 // either .NET or F# parameters
                         let argInfo : ArgReprInfo = { Name=nmOpt; Attribs= [] }
@@ -1646,11 +1653,11 @@ and FSharpMemberOrFunctionOrValue(cenv, d:FSharpMemberOrValData, item) =
         let m = range0
         match d with 
         | E einfo -> 
-            AttributeChecking.GetAttribInfosOfEvent cenv.amap m einfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
+            GetAttribInfosOfEvent cenv.amap m einfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
         | P pinfo -> 
-            AttributeChecking.GetAttribInfosOfProp cenv.amap m pinfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
+            GetAttribInfosOfProp cenv.amap m pinfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
         | M minfo -> 
-            AttributeChecking.GetAttribInfosOfMethod cenv.amap m minfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
+            GetAttribInfosOfMethod cenv.amap m minfo |> List.map (fun a -> FSharpAttribute(cenv,  a))
         | V v -> 
             v.Attribs |> List.map (fun a -> FSharpAttribute(cenv,  AttribInfo.FSAttribInfo(cenv.g, a))) 
      |> makeReadOnlyCollection

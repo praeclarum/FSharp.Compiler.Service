@@ -40,22 +40,21 @@ module internal MSBuildResolver =
     open Microsoft.Build.Tasks
     open Microsoft.Build.Utilities
     open Microsoft.Build.Framework
-    open Microsoft.Build.BuildEngine
     open System.IO
     open System.Reflection
 
     type ResolvedFile = 
-        { /// Item specification
+        { /// Item specification.
           itemSpec:string
-          /// Location that the assembly was resolved from
+          /// Location that the assembly was resolved from.
           resolvedFrom:ResolvedFrom
-          /// The long fusion name of the assembly
+          /// The long fusion name of the assembly.
           fusionName:string
-          /// The version of the assembly (like 4.0.0.0)
+          /// The version of the assembly (like 4.0.0.0).
           version:string
-          /// The name of the redist the assembly was found in
+          /// The name of the redist the assembly was found in.
           redist:string        
-          /// Round-tripped baggage string
+          /// Round-tripped baggage string.
           baggage:string
           }
 
@@ -63,17 +62,17 @@ module internal MSBuildResolver =
 
     /// Reference resolution results. All paths are fully qualified.
     type ResolutionResults = 
-        { /// Paths to primary references
+        { /// Paths to primary references.
           resolvedFiles:ResolvedFile[]
-          /// Paths to dependencies
+          /// Paths to dependencies.
           referenceDependencyPaths:string[]
-          /// Paths to related files (like .xml and .pdb)
+          /// Paths to related files (like .xml and .pdb).
           relatedPaths:string[]
           /// Paths to satellite assemblies used for localization.
           referenceSatellitePaths:string[]
           /// Additional files required to support multi-file assemblies.
           referenceScatterPaths:string[]
-          /// Paths to files that reference resolution recommend be copied to the local directory
+          /// Paths to files that reference resolution recommend be copied to the local directory.
           referenceCopyLocalPaths:string[]
           /// Binding redirects that reference resolution recommends for the app.config file.
           suggestedBindingRedirects:string[] 
@@ -90,9 +89,10 @@ module internal MSBuildResolver =
           }
 
 
-    /// Get the Reference Assemblies directory for the .NET Framework on Window
+    /// Get the Reference Assemblies directory for the .NET Framework on Window.
     let DotNetFrameworkReferenceAssembliesRootDirectoryOnWindows = 
-        // Note that ProgramFilesX86 is correct for both x86 and x64 architectures (the reference assemblies are always in the 32-bit location, which is PF(x86) on an x64 machine)
+        // ProgramFilesX86 is correct for both x86 and x64 architectures 
+        // (the reference assemblies are always in the 32-bit location, which is PF(x86) on an x64 machine)
         let PF = 
             match Environment.GetEnvironmentVariable("ProgramFiles(x86)") with
             | null -> Environment.GetEnvironmentVariable("ProgramFiles")  // if PFx86 is null, then we are 32-bit and just get PF
@@ -139,16 +139,9 @@ module internal MSBuildResolver =
     /// The list of supported .NET Framework version numbers, using the monikers of the Reference Assemblies folder.
     let SupportedNetFrameworkVersions = set [ Net20; Net30; Net35; Net40; Net45; Net451; (*SL only*) "v5.0" ]
     
-#if CROSS_PLATFORM_COMPILER
-    // Mono doesn't have GetPathToDotNetFramework. In this case we simply don't search this extra directory.
-    // When the x-plat compiler is run on Mono this is ok since implementation assembly folder is the same as the target framework folder.
-    // When the x-plat compiler is run on Windows/.NET this will curently cause slightly divergent behaviour.
-    let GetPathToDotNetFrameworkImlpementationAssemblies _v = []
-#else
     /// Get the path to the .NET Framework implementation assemblies by using ToolLocationHelper.GetPathToDotNetFramework.
     /// This is only used to specify the "last resort" path for assembly resolution.
     let GetPathToDotNetFrameworkImlpementationAssemblies(v) =
-#if FX_ATLEAST_45
         let v =
             match v with
             | Net11 ->  Some TargetDotNetFrameworkVersion.Version11
@@ -165,61 +158,18 @@ module internal MSBuildResolver =
             | null -> []
             | x -> [x]
         | _ -> []
-#else
-        // FX_ATLEAST_45 is not defined for step when we build compiler with proto compiler.
-        ignore v
-        []
-#endif        
-#endif        
 
 
-#if CROSS_PLATFORM_COMPILER
-    // ToolLocationHelper.GetPathToDotNetFrameworkReferenceAssemblies is not available on Mono.
-    // We currently use the old values that the F# 2.0 compiler assumed. 
-    // When the x-plat compiler is run on Mono this is ok since the asemblies are all in the framework folder
-    // When the x-plat compiler is run on Windows/.NET this will curently cause slightly divergent behaviour this directory 
-    // may not be the same as the Microsoft compiler in all cases.
-    let GetPathToDotNetFrameworkReferenceAssembliesFor40Plus(version) = 
-        match version with 
-        | Net40 -> ReplaceVariablesForLegacyFxOnWindows([@"{ReferenceAssemblies}\v4.0"])  
-        | Net45 -> ReplaceVariablesForLegacyFxOnWindows([@"{ReferenceAssemblies}\v4.5"])         
-        | Net451 -> ReplaceVariablesForLegacyFxOnWindows([@"{ReferenceAssemblies}\v4.5"])         
-        | _ -> []
-#else
+    let GetPathToDotNetFrameworkReferenceAssemblies(version) = 
+        match Microsoft.Build.Utilities.ToolLocationHelper.GetPathToStandardLibraries(".NETFramework",version,"") with
+        | null | "" -> []
+        | x -> [x]
 
-    let GetPathToDotNetFrameworkReferenceAssembliesFor40Plus(version) = 
-#if FX_ATLEAST_45
-        // starting with .Net 4.0, the runtime dirs (WindowsFramework) are never used by MSBuild RAR
-        let v =
-            match version with
-            | Net40 -> Some TargetDotNetFrameworkVersion.Version40
-            | Net45 -> Some TargetDotNetFrameworkVersion.Version45
-            | Net451 -> Some TargetDotNetFrameworkVersion.Version451
-            | _ -> assert false; None // unknown version - some parts in the code are not synced
-        match v with
-        | Some v -> 
-            match ToolLocationHelper.GetPathToDotNetFrameworkReferenceAssemblies v with
-            | null -> []
-            | x -> [x]
-        | None -> []        
-#else
-        // FX_ATLEAST_45 is not defined for step when we build compiler with proto compiler.
-        ignore version
-        []
-#endif
-#endif
-
-#if CROSS_PLATFORM_COMPILER
-    let HighestInstalledNetFrameworkVersionMajorMinor() =
-       // Mono doesn't have GetPathToDotNetFramework
-        4, Net40
-#else
     /// Use MSBuild to determine the version of the highest installed framework.
     let HighestInstalledNetFrameworkVersionMajorMinor() =
         if box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version451)) <> null then 4, Net451
         elif box (ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.Version45)) <> null then 4, Net45
-        else 4, Net40 // version is 4.0 assumed since this code is running.
-#endif
+        else 4, Net45 // version is 4.5 assumed since this code is running.
 
     /// Derive the target framework directories.        
     let DeriveTargetFrameworkDirectories (targetFrameworkVersion:string, logMessage) =
@@ -228,13 +178,7 @@ module internal MSBuildResolver =
             if not(targetFrameworkVersion.StartsWith("v",StringComparison.Ordinal)) then "v"+targetFrameworkVersion
             else targetFrameworkVersion
 
-        let result =
-            if targetFrameworkVersion.StartsWith(Net10, StringComparison.Ordinal) then ReplaceVariablesForLegacyFxOnWindows([@"{WindowsFramework}\v1.0.3705"])
-            elif targetFrameworkVersion.StartsWith(Net11, StringComparison.Ordinal) then ReplaceVariablesForLegacyFxOnWindows([@"{WindowsFramework}\v1.1.4322"])
-            elif targetFrameworkVersion.StartsWith(Net20, StringComparison.Ordinal) then ReplaceVariablesForLegacyFxOnWindows([@"{WindowsFramework}\v2.0.50727"])
-            elif targetFrameworkVersion.StartsWith(Net30, StringComparison.Ordinal) then ReplaceVariablesForLegacyFxOnWindows([@"{ReferenceAssemblies}\v3.0"; @"{WindowsFramework}\v3.0"; @"{WindowsFramework}\v2.0.50727"])
-            elif targetFrameworkVersion.StartsWith(Net35, StringComparison.Ordinal) then ReplaceVariablesForLegacyFxOnWindows([@"{ReferenceAssemblies}\v3.5"; @"{WindowsFramework}\v3.5"; @"{ReferenceAssemblies}\v3.0"; @"{WindowsFramework}\v3.0"; @"{WindowsFramework}\v2.0.50727"])
-            else GetPathToDotNetFrameworkReferenceAssembliesFor40Plus(targetFrameworkVersion)
+        let result = GetPathToDotNetFrameworkReferenceAssemblies(targetFrameworkVersion)
 
         let result = result |> Array.ofList                
         logMessage (sprintf "Derived target framework directories for version %s are: %s" targetFrameworkVersion (String.Join(",", result)))                
@@ -417,7 +361,7 @@ module internal MSBuildResolver =
                 outputDirectory, fsharpCoreExplicitDirOrFSharpBinariesDir, explicitIncludeDirs, implicitIncludeDir, frameworkRegistryBase, 
                 assemblyFoldersSuffix, assemblyFoldersConditions, logMessage, logWarning, logError) =
 
-        // The {RawFileName} target is 'dangerous', in the sense that is uses Directory.GetCurrentDirectory() to resolve unrooted file paths.
+        // The {RawFileName} target is 'dangerous', in the sense that is uses <c>Directory.GetCurrentDirectory()</c> to resolve unrooted file paths.
         // It is unreliable to use this mutable global state inside Visual Studio.  As a result, we partition all references into a "rooted" set
         // (which contains e.g. C:\MyDir\MyAssem.dll) and "unrooted" (everything else).  We only allow "rooted" to use {RawFileName}.  Note that
         // unrooted may still find 'local' assemblies by virtue of the fact that "implicitIncludeDir" is one of the places searched during 

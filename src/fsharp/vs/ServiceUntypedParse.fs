@@ -19,8 +19,6 @@ open Microsoft.FSharp.Compiler.ErrorLogger
 open Microsoft.FSharp.Compiler.CompileOps
 open Microsoft.FSharp.Compiler.Lib
 
-open Internal.Utilities.Debug
-
 /// Methods for dealing with F# sources files.
 module internal SourceFile =
     /// Source file extensions
@@ -98,7 +96,6 @@ type FSharpParseFileResults(errors : FSharpErrorInfo[], input : Ast.ParsedInput 
        ErrorScope.Protect 
             Range.range0 
             (fun () -> 
-                use t = Trace.Call("CompilerServices", "GetNavigationItems", fun _ -> "")
                 match input with
                 | Some(ParsedInput.ImplFile(ParsedImplFileInput(_modname,_isScript,_qualName,_pragmas,_hashDirectives,modules,_isLastCompiland))) ->
                     NavigationImpl.getNavigationFromImplFile modules 
@@ -171,6 +168,7 @@ type FSharpParseFileResults(errors : FSharpErrorInfo[], input : Ast.ParsedInput 
                   | SynExpr.DiscardAfterMissingQualificationAfterDot (e,_) 
                   | SynExpr.Do (e,_)
                   | SynExpr.Assert (e,_)
+                  | SynExpr.Fixed (e,_)
                   | SynExpr.DotGet (e,_,_,_) 
                   | SynExpr.LongIdentSet (_,e,_)
                   | SynExpr.New (_,_,e,_) 
@@ -312,20 +310,20 @@ type FSharpParseFileResults(errors : FSharpErrorInfo[], input : Ast.ParsedInput 
                       yield! walkExpr false expr
                   | SynModuleDecl.ModuleAbbrev _ -> 
                       ()
-                  | SynModuleDecl.NestedModule(_, decls, _, m) ->                
+                  | SynModuleDecl.NestedModule(_, _isRec, decls, _, m) ->                
                       if rangeContainsPos m pos then 
                           for d in decls do yield! walkDecl d
                   | SynModuleDecl.Types(tydefs, m) -> 
                       if rangeContainsPos m pos then 
                           for d in tydefs do yield! walkTycon d
-                  | SynModuleDecl.Exception(ExceptionDefn(ExceptionDefnRepr(_, _, _, _, _, _), membDefns, _), m) ->
+                  | SynModuleDecl.Exception(SynExceptionDefn(SynExceptionDefnRepr(_, _, _, _, _, _), membDefns, _), m) ->
                       if rangeContainsPos m pos then 
                           for m in membDefns do yield! walkMember m
                   | _ ->
                       () ] 
                       
             // Collect all the items  
-            let walkModule (SynModuleOrNamespace(_,_,decls,_,_,_,m)) =
+            let walkModule (SynModuleOrNamespace(_,_,_,decls,_,_,_,m)) =
                 if rangeContainsPos m pos then 
                     [ for d in decls do yield! walkDecl d ]
                 else
@@ -363,12 +361,10 @@ type FSharpParseFileResults(errors : FSharpErrorInfo[], input : Ast.ParsedInput 
     
     // Get items for the navigation drop down bar       
     member scope.GetNavigationItems() =
-        use t = Trace.Call("SyncOp","GetNavigationItems", fun _->"")
         // This does not need to be run on the background thread
         scope.GetNavigationItemsImpl()
 
     member scope.ValidateBreakpointLocation(pos) =
-        use t = Trace.Call("SyncOp","ValidateBreakpointLocation", fun _->"")
         // This does not need to be run on the background thread
         scope.ValidateBreakpointLocationImpl(pos)
 

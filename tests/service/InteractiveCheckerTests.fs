@@ -13,6 +13,7 @@ open FsUnit
 open System
 open Microsoft.FSharp.Compiler
 open Microsoft.FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.Service.Tests.Common
 
 let longIdentToString (longIdent: Ast.LongIdent) =
     String.Join(".", longIdent |> List.map (fun ident -> ident.ToString()))
@@ -36,7 +37,7 @@ let identsAndRanges (input: Ast.ParsedInput) =
         match moduleDecl with
         | Ast.SynModuleDecl.Types(typeDefns, _) -> (typeDefns |> List.collect extractFromTypeDefn)
         | Ast.SynModuleDecl.ModuleAbbrev(ident, _, range) -> [ identAndRange (ident.ToString()) range ]
-        | Ast.SynModuleDecl.NestedModule(componentInfo, decls, _, _) -> (extractFromComponentInfo componentInfo) @ (decls |> List.collect extractFromModuleDecl)
+        | Ast.SynModuleDecl.NestedModule(componentInfo, _, decls, _, _) -> (extractFromComponentInfo componentInfo) @ (decls |> List.collect extractFromModuleDecl)
         | Ast.SynModuleDecl.Let(_, _, _) -> failwith "Not implemented yet"
         | Ast.SynModuleDecl.DoExpr(_, _, _range) -> failwith "Not implemented yet"
         | Ast.SynModuleDecl.Exception(_, _range) -> failwith "Not implemented yet"
@@ -44,7 +45,7 @@ let identsAndRanges (input: Ast.ParsedInput) =
         | Ast.SynModuleDecl.Attributes(_attrs, _range) -> failwith "Not implemented yet"
         | Ast.SynModuleDecl.HashDirective(_, _range) -> failwith "Not implemented yet"
         | Ast.SynModuleDecl.NamespaceFragment(moduleOrNamespace) -> extractFromModuleOrNamespace moduleOrNamespace
-    and extractFromModuleOrNamespace (Ast.SynModuleOrNamespace(longIdent, _, moduleDecls, _, _, _, range)) =
+    and extractFromModuleOrNamespace (Ast.SynModuleOrNamespace(longIdent, _, _, moduleDecls, _, _, _, range)) =
         (identAndRange (longIdentToString longIdent) range) :: (moduleDecls |> List.collect extractFromModuleDecl)
 
     match input with
@@ -53,15 +54,8 @@ let identsAndRanges (input: Ast.ParsedInput) =
     | Ast.ParsedInput.SigFile _ -> []
 
 let parseAndExtractRanges code =
-    let file = "/home/user/Test.fsx"
-    let checker = FSharpChecker.Create()
-    let result =
-        async {
-            let! projectOptions = checker.GetProjectOptionsFromScript(file, code)
-            let! input = checker.ParseFileInProject(file, code, projectOptions)
-            return input.ParseTree
-        }
-        |> Async.RunSynchronously
+    let file = "Test"
+    let result = parseSourceCode (file, code)
     match result with
     | Some tree -> tree |> identsAndRanges
     | None -> failwith "fail to parse..."

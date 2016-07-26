@@ -1,4 +1,3 @@
-.DS_Store
 lib/debug
 lib/release
 lib/proto
@@ -29,8 +28,6 @@ src/fsharp/FSharp.Compiler/*.sln
 src/fsharp/FSharp.Compiler/*.userprefs
 Debug
 Release
-vsdebug
-vsrelease
 Proto
 sign_temp
 .libs
@@ -64,8 +61,6 @@ src/fsharp/FSharp.Compiler-proto/pppars.fs
 src/fsharp/FSharp.Compiler-proto/pppars.fsi
 
 *~
-tests/projects/Sample_VS2012_FSharp_ConsoleApp_net45_with_resource/Sample_VS2012_FSharp_ConsoleApp_net45/Sample_VS2012_FSharp_ConsoleApp_net45.sln
-tests/projects/Sample_VS2012_FSharp_ConsoleApp_net45_with_resource/Sample_VS2012_FSharp_ConsoleApp_net45/Sample_VS2012_FSharp_ConsoleApp_net45.userprefs
 *.suo
 obj
 src/fsharp/FSharp.Data.TypeProviders/FSData.resx
@@ -135,7 +130,7 @@ src/fsharp/FSharp.Compiler.Service/pppars.fs
 src/fsharp/FSharp.Compiler.Service/pppars.fsi
 .fake
 *.cto
-tests/**/FSharp.Core.dll
+*.vstman
 project.lock.json
 
 src/fsharp/FSharp.Compiler.Service.netcore/FSComp.fs
@@ -151,3 +146,7 @@ src/fsharp/FSharp.Compiler.Service.netcore/pars.fsi
 src/fsharp/FSharp.Compiler.Service.netcore/pplex.fs
 src/fsharp/FSharp.Compiler.Service.netcore/pppars.fs
 src/fsharp/FSharp.Compiler.Service.netcore/pppars.fsi
+Tools/
+Backup/
+
+.DS_Store

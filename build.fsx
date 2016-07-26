@@ -80,8 +80,13 @@ Target "GenerateFSIStrings" (fun _ ->
       let dir = __SOURCE_DIRECTORY__ </> "src/fsharp/fsi"
       p.Arguments <- "FSIstrings.txt FSIstrings.fs FSIstrings.resx"
       p.WorkingDirectory <- dir
-      p.FileName <- !! "lib/bootstrap/4.0/fssrgen.exe" |> Seq.head ) TimeSpan.MaxValue
+      p.FileName <- !! "packages/FsSrGen/lib/net46/fssrgen.exe" |> Seq.head ) TimeSpan.MaxValue
     |> ignore
+//    execProcess (fun p -> 
+ //     p.Arguments <- "u+x packages/FsSrGen/lib/net46/fssrgen.exe"
+ //     p.WorkingDirectory <- __SOURCE_DIRECTORY__ 
+ //     p.FileName <- "chmod") TimeSpan.MaxValue
+ //   |> ignore
 )
 
 Target "Build" (fun _ ->
@@ -219,7 +224,7 @@ Target "GitHubRelease" (fun _ ->
 let isDotnetCliInstalled = (try Shell.Exec("dotnet", "--info") = 0 with _ -> false)
 let assertExitCodeZero x = if x = 0 then () else failwithf "Command failed with exit code %i" x
 
-Target "DotnetCliBuild" (fun _ ->
+Target "DotnetCliCodeGen" (fun _ ->
     let fsLex  = @"lib/bootstrap/4.0/fslex.exe"
     let fsYacc = @"lib/bootstrap/4.0/fsyacc.exe"
     let lexArgs = @" --lexlib Internal.Utilities.Text.Lexing"
@@ -230,21 +235,36 @@ Target "DotnetCliBuild" (fun _ ->
     let open1 = @" --open Microsoft.FSharp.Compiler.AbstractIL"
     let open2 = @" --open Microsoft.FSharp.Compiler"
     let open3 = @" --open Microsoft.FSharp.Compiler"
-    let options = " --configuration Release"
+
+    // restore tools
+    let workDir = @"src/fsharp/FSharp.Compiler.Service.netcore/"
+    Shell.Exec("dotnet", "restore -v Minimal", workDir) |> assertExitCodeZero
+
+    // run tools
+    Shell.Exec("dotnet", "fssrgen ../FSComp.txt ./FSComp.fs ./FSComp.resx", workDir) |> assertExitCodeZero
+    Shell.Exec("dotnet", "fssrgen ../fsi/FSIstrings.txt ./FSIstrings.fs ./FSIstrings.resx", workDir) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../lex.fsl --unicode" + lexArgs + " -o lex.fs", workDir) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../pplex.fsl --unicode" + lexArgs + " -o pplex.fs", workDir) |> assertExitCodeZero
+    Shell.Exec(fsLex, @"../../absil/illex.fsl --unicode" + lexArgs + " -o illex.fs", workDir) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../../absil/ilpars.fsy" + lexArgs + yaccArgs + module1 + open1 + " -o ilpars.fs", workDir) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../pars.fsy" + lexArgs + yaccArgs + module2 + open2 + " -o pars.fs", workDir) |> assertExitCodeZero
+    Shell.Exec(fsYacc, @"../pppars.fsy" + lexArgs + yaccArgs + module3 + open3 + " -o pppars.fs", workDir) |> assertExitCodeZero
+)
+
+Target "DotnetCliBuild" (fun _ ->
+    let workDir = @"src/fsharp/FSharp.Compiler.Service.netcore/"
+    Shell.Exec("dotnet", "restore -v Information", workDir) |> assertExitCodeZero
+    Shell.Exec("dotnet", "-v pack -c Release -o ../../../" + buildDir, workDir) |> assertExitCodeZero
     
-    let outPath = @"src/fsharp/FSharp.Compiler.Service.netcore/"
-    Shell.Exec("dotnet", "restore", outPath) |> ignore //assertExitCodeZero
+    let workDir = @"src/fsharp/FSharp.Compiler.Service.ProjectCracker.netcore/"
+    Shell.Exec("dotnet", "restore -v Information", workDir) |> assertExitCodeZero
+    Shell.Exec("dotnet", "-v pack -c Release -o ../../../" + buildDir, workDir) |> assertExitCodeZero
+)
 
-    Shell.Exec("dotnet", "fssrgen ../FSComp.txt ./FSComp.fs ./FSComp.resx", outPath) |> assertExitCodeZero
-    Shell.Exec("dotnet", "fssrgen ../fsi/FSIstrings.txt ./FSIstrings.fs ./FSIstrings.resx", outPath) |> assertExitCodeZero
-    Shell.Exec(fsLex, @"../lex.fsl --unicode" + lexArgs + " -o lex.fs", outPath) |> assertExitCodeZero
-    Shell.Exec(fsLex, @"../pplex.fsl --unicode" + lexArgs + " -o pplex.fs", outPath) |> assertExitCodeZero
-    Shell.Exec(fsLex, @"../../absil/illex.fsl --unicode" + lexArgs + " -o illex.fs", outPath) |> assertExitCodeZero
-    Shell.Exec(fsYacc, @"../../absil/ilpars.fsy" + lexArgs + yaccArgs + module1 + open1 + " -o ilpars.fs", outPath) |> assertExitCodeZero
-    Shell.Exec(fsYacc, @"../pars.fsy" + lexArgs + yaccArgs + module2 + open2 + " -o pars.fs", outPath) |> assertExitCodeZero
-    Shell.Exec(fsYacc, @"../pppars.fsy" + lexArgs + yaccArgs + module3 + open3 + " -o pppars.fs", outPath) |> assertExitCodeZero
-
-    Shell.Exec("dotnet", "--verbose pack" + options, outPath) |> assertExitCodeZero
+Target "DotnetCliTests" (fun _ ->
+    let workDir = @"tests/FSharp.Compiler.Service.Tests.netcore/"
+    Shell.Exec("dotnet", "restore -v Information", workDir) |> assertExitCodeZero
+    Shell.Exec("dotnet", "-v run -c Release", workDir) |> assertExitCodeZero
 )
 
 // --------------------------------------------------------------------------------------
@@ -254,13 +274,18 @@ Target "Prepare" DoNothing
 Target "PrepareRelease" DoNothing
 Target "All" DoNothing
 Target "Release" DoNothing
+Target "DotnetCli" DoNothing
+
+"DotnetCli"
+  =?> ("DotnetCliCodeGen", isDotnetCliInstalled)
+  =?> ("DotnetCliBuild", isDotnetCliInstalled)
+  =?> ("DotnetCliTests", isDotnetCliInstalled)
 
 "Clean"
   =?> ("BuildVersion", isAppVeyorBuild)
   ==> "AssemblyInfo"
   ==> "GenerateFSIStrings"
   ==> "Prepare"
-  =?> ("DotnetCliBuild", isDotnetCliInstalled)
   ==> "Build"
   ==> "RunTests"
   ==> "All"

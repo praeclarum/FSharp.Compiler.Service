@@ -12,6 +12,7 @@ open Microsoft.FSharp.Compiler.Tastops
 open Microsoft.FSharp.Compiler.Lib
 open Microsoft.FSharp.Compiler.AbstractIL
 open Microsoft.FSharp.Compiler.AbstractIL.IL
+open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library 
 open Microsoft.FSharp.Compiler.CompileOps
@@ -1063,8 +1064,6 @@ module IncrementalBuilderEventTesting =
 
 module Tc = Microsoft.FSharp.Compiler.TypeChecker
 
-open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics 
-open Internal.Utilities.Debug
 
 /// Accumulated results of type checking.
 [<NoEquality; NoComparison>]
@@ -1265,8 +1264,8 @@ type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig
 
     // Mark up the source files with an indicator flag indicating if they are the last source file in the project
     let sourceFiles = 
-        let flags = tcConfig.ComputeCanContainEntryPoint(sourceFiles |> List.map snd)
-        (sourceFiles,flags) ||> List.map2 (fun (m,nm) flag -> (m,nm,flag))
+        let flags, isExe = tcConfig.ComputeCanContainEntryPoint(sourceFiles |> List.map snd)
+        ((sourceFiles,flags) ||> List.map2 (fun (m,nm) flag -> (m,nm,(flag, isExe))))
 
     let defaultTimeStamp = DateTime.Now
     let getFileTimeStamp (cache: TimeStampCache) fileName = 
@@ -1349,7 +1348,7 @@ type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig
     /// This is a build task function that gets placed into the build rules as the computation for a VectorStamp
     ///
     /// Get the timestamp of the given file name.
-    let StampFileNameTask cache (_m:range, _filename:string, _isLastCompiland:bool, timeStamper: (TimeStampCache -> DateTime)) =
+    let StampFileNameTask cache (_m:range, _filename:string, _isLastCompiland, timeStamper: (TimeStampCache -> DateTime)) =
         timeStamper cache 
                             
     /// This is a build task function that gets placed into the build rules as the computation for a VectorMap
@@ -1576,7 +1575,7 @@ type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig
     // START OF BUILD DESCRIPTION
 
     // Inputs
-    let fileNamesNode               = InputVector<range*string*bool*(TimeStampCache->DateTime)> "FileNames"
+    let fileNamesNode               = InputVector<range*string*(bool*bool)*(TimeStampCache->DateTime)> "FileNames"
     let referencedAssembliesNode    = InputVector<Choice<string,IProjectReference>*(TimeStampCache->DateTime)> "ReferencedAssemblies"
         
     // Build
@@ -1787,7 +1786,9 @@ type IncrementalBuilder(frameworkTcImportsCache: FrameworkImportsCache, tcConfig
                     define::tcConfigB.conditionalCompilationDefines
 
                 tcConfigB.projectReferences <- projectReferences
-
+#if TODO_REWORK_ASSEMBLY_LOAD
+                tcConfigB.useMonoResolution <- true // turn off msbuild resolution
+#endif
                 // Apply command-line arguments and collect more source files if they are in the arguments
                 let sourceFilesNew = 
                     try

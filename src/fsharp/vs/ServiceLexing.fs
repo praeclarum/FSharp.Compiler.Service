@@ -18,7 +18,6 @@ open Microsoft.FSharp.Compiler.Ast
 open Microsoft.FSharp.Compiler.ErrorLogger
 open Microsoft.FSharp.Compiler.Lexhelp
 open Microsoft.FSharp.Compiler.Lib
-open Internal.Utilities.Debug
 
 type Position = int * int
 type Range = Position * Position
@@ -250,7 +249,7 @@ module internal TokenClassifications =
         | FINALLY   | LAZY   | MATCH  | MUTABLE   | NEW   | OF    | OPEN   | OR | VOID | EXTERN
         | INTERFACE | REC   | TO   | TRUE   | TRY   | TYPE   |  VAL   | INLINE   | WHEN  | WHILE   | WITH
         | IF | THEN  | ELSE | DO | DONE | LET(_) | IN (*| NAMESPACE*) | CONST
-        | HIGH_PRECEDENCE_PAREN_APP
+        | HIGH_PRECEDENCE_PAREN_APP | FIXED
         | HIGH_PRECEDENCE_BRACK_APP
         | TYPE_COMING_SOON | TYPE_IS_HERE | MODULE_COMING_SOON | MODULE_IS_HERE
           -> (FSharpTokenColorKind.Keyword,FSharpTokenCharKind.Keyword,FSharpTokenTriggerClass.None)
@@ -649,9 +648,7 @@ type FSharpLineTokenizer(lexbuf: UnicodeLexing.Lexbuf,
             | EOF lexcont -> 
                 // End of text! No more tokens.
                 None,lexcont,0 
-            | LEX_FAILURE s -> 
-                // REVIEW: report this error
-                Trace.PrintLine("Lexing", fun _ -> sprintf "LEX_FAILURE:%s\n" s)
+            | LEX_FAILURE _ -> 
                 None, LexerStateEncoding.revertToDefaultLexCont, 0
             | _ ->
                 // Get the information about the token

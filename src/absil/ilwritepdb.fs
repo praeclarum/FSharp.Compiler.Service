@@ -8,9 +8,10 @@ open System.Collections.Immutable
 open System.IO
 open System.Reflection
 open System.Reflection.Metadata
+#if !FX_NO_PDB_WRITER
 open System.Reflection.Metadata.Ecma335
-open System.Reflection.Metadata.Ecma335.Blobs
 open System.Reflection.PortableExecutable
+#endif
 open Internal.Utilities
 open Microsoft.FSharp.Compiler.AbstractIL.IL 
 open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics 
@@ -199,9 +200,10 @@ let fixupOverlappingSequencePoints fixupSPs showTimes methods =
     spCounts, allSps
 
 let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) = 
-
     try FileSystem.FileDelete fpdb with _ -> ()
 
+#if FX_NO_PDB_WRITER
+#else
     sortMethods showTimes info
     let _spCounts, _allSps = fixupOverlappingSequencePoints fixupSPs showTimes info.Methods
     let externalRowCounts = getRowCounts info.TableRowCounts
@@ -222,10 +224,10 @@ let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) =
         writer.WriteByte(byte(separator))
 
         for part in name.Split( [| separator |] ) do
-            let partIndex = MetadataTokens.GetHeapOffset(BlobHandle.op_Implicit(metadata.GetBlobUtf8(part)))
+            let partIndex = MetadataTokens.GetHeapOffset(BlobHandle.op_Implicit(metadata.GetOrAddBlobUTF8(part)))
             writer.WriteCompressedInteger(int(partIndex))
 
-        metadata.GetBlob(writer);
+        metadata.GetOrAddBlob(writer);
 
     let corSymLanguageTypeFSharp = System.Guid(0xAB4F38C9u, 0xB6E6us, 0x43baus, 0xBEuy, 0x3Buy, 0x58uy, 0x08uy, 0x0Buy, 0x2Cuy, 0xCCuy, 0xE3uy)
     let documentIndex =
@@ -236,14 +238,14 @@ let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) =
                 match checkSum doc.File with
                 | Some (hashAlg, checkSum) ->
                     serializeDocumentName doc.File,
-                    metadata.GetGuid(hashAlg),
-                    metadata.GetBlob(checkSum.ToImmutableArray()),
-                    metadata.GetGuid(corSymLanguageTypeFSharp)
+                    metadata.GetOrAddGuid(hashAlg),
+                    metadata.GetOrAddBlob(checkSum.ToImmutableArray()),
+                    metadata.GetOrAddGuid(corSymLanguageTypeFSharp)
                 | None ->
                     serializeDocumentName doc.File,
-                    metadata.GetGuid(System.Guid.Empty),
-                    metadata.GetBlob(ImmutableArray<byte>.Empty),
-                    metadata.GetGuid(corSymLanguageTypeFSharp)
+                    metadata.GetOrAddGuid(System.Guid.Empty),
+                    metadata.GetOrAddBlob(ImmutableArray<byte>.Empty),
+                    metadata.GetOrAddGuid(corSymLanguageTypeFSharp)
                 |> metadata.AddDocument
             index.Add(doc.File, handle)
         index
@@ -332,7 +334,7 @@ let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) =
                     previousNonHiddenStartLine <- sps.[i].Line
                     previousNonHiddenStartColumn <- sps.[i].Column
 
-                getDocumentHandle singleDocumentIndex, metadata.GetBlob(builder)
+                getDocumentHandle singleDocumentIndex, metadata.GetOrAddBlob(builder)
 
         // Write the scopes 
         let mutable lastLocalVariableHandle = Unchecked.defaultof<LocalVariableHandle>
@@ -347,7 +349,7 @@ let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) =
                                        scope.StartOffset, 
                                        scope.EndOffset - scope.StartOffset) |>ignore
                 for localVariable in scope.Locals do
-                    lastLocalVariableHandle <- metadata.AddLocalVariable(LocalVariableAttributes.None, localVariable.Index, metadata.GetString(localVariable.Name))
+                    lastLocalVariableHandle <- metadata.AddLocalVariable(LocalVariableAttributes.None, localVariable.Index, metadata.GetOrAddString(localVariable.Name))
                 scope.Children |> Array.iter (writePdbScope false)
 
         writePdbScope true minfo.RootScope
@@ -358,16 +360,17 @@ let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) =
         | None -> MetadataTokens.MethodDefinitionHandle(0)
         | Some x -> MetadataTokens.MethodDefinitionHandle(x) 
 
-    let pdbContentId = ContentId(info.ModuleID, BitConverter.GetBytes(info.Timestamp))
-    let serializer = StandaloneDebugMetadataSerializer(metadata, externalRowCounts, entryPoint, false)
+    let serializer = PortablePdbBuilder(metadata, externalRowCounts, entryPoint, null )
     let blobBuilder = new BlobBuilder()
-    serializer.SerializeMetadata(blobBuilder, (fun builder -> pdbContentId)) |> ignore
+    serializer.Serialize(blobBuilder) |> ignore
 
     reportTime showTimes "PDB: Created"
     use portablePdbStream = new FileStream(fpdb, FileMode.Create, FileAccess.ReadWrite)
     blobBuilder.WriteContentTo(portablePdbStream)
     reportTime showTimes "PDB: Closed"
     pdbGetDebugInfo info.ModuleID fpdb
+
+#endif
 
 #if FX_NO_PDB_WRITER
 #else

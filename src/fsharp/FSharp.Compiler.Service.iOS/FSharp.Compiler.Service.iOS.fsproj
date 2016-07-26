@@ -87,6 +87,9 @@
     <Compile Include="..\..\utils\HashMultiMap.fs">
       <Link>Utilities/HashMultiMap.fs</Link>
     </Compile>
+    <Compile Include="..\..\utils\EditDistance.fs">
+      <Link>Utilities\EditDistance.fs</Link>
+    </Compile>
     <Compile Include="..\..\utils\TaggedCollections.fsi">
       <Link>Utilities/TaggedCollections.fsi</Link>
     </Compile>
@@ -95,6 +98,15 @@
     </Compile>
     <Compile Include="..\FlatList.fs">
       <Link>Utilities/FlatList.fs</Link>
+    </Compile>
+    <Compile Include="..\QueueList.fs">
+      <Link>Utilities/QueueList.fs</Link>
+    </Compile>
+    <Compile Include="..\..\absil\ildiag.fsi">
+      <Link>Utilities/ildiag.fsi</Link>
+    </Compile>
+    <Compile Include="..\..\absil\ildiag.fs">
+      <Link>Utilities/ildiag.fs</Link>
     </Compile>
     <Compile Include="..\..\absil\illib.fs">
       <Link>Utilities/illib.fs</Link>
@@ -123,11 +135,11 @@
     <Compile Include="..\..\absil\bytes.fs">
       <Link>Utilities/bytes.fs</Link>
     </Compile>
-    <Compile Include="..\..\absil\ildiag.fsi">
-      <Link>Utilities/ildiag.fsi</Link>
+    <Compile Include="..\lib.fs">
+      <Link>Utilities/lib.fs</Link>
     </Compile>
-    <Compile Include="..\..\absil\ildiag.fs">
-      <Link>Utilities/ildiag.fs</Link>
+    <Compile Include="..\ErrorResolutionHints.fs">
+      <Link>Utilities/ErrorResolutionHints.fs</Link>
     </Compile>
     <Compile Include="..\InternalCollections.fsi">
       <Link>Utilities/InternalCollections.fsi</Link>
@@ -135,23 +147,11 @@
     <Compile Include="..\InternalCollections.fs">
       <Link>Utilities/InternalCollections.fs</Link>
     </Compile>
-    <Compile Include="..\QueueList.fs">
-      <Link>Utilities/QueueList.fs</Link>
-    </Compile>
-    <Compile Include="..\lib.fs">
-      <Link>Utilities/lib.fs</Link>
-    </Compile>
-    <Compile Include="..\TraceCall.fsi">
-      <Link>Utilities/TraceCall.fsi</Link>
-    </Compile>
-    <Compile Include="..\TraceCall.fs">
-      <Link>Utilities/TraceCall.fs</Link>
-    </Compile>
     <Compile Include="..\rational.fsi">
-      <Link>ErrorLogging\rational.fsi</Link>
+      <Link>Utilities/rational.fsi</Link>
     </Compile>
     <Compile Include="..\rational.fs">
-      <Link>ErrorLogging\rational.fs</Link>
+      <Link>Utilities/rational.fs</Link>
     </Compile>
     <Compile Include="..\range.fsi">
       <Link>ErrorLogging/range.fsi</Link>
@@ -219,6 +219,12 @@
     <Compile Include="..\..\absil\ilread.fs">
       <Link>AbsIL/ilread.fs</Link>
     </Compile>
+    <Compile Include="..\..\absil\ilwritepdb.fsi">
+      <Link>AbsIL/ilwritepdb.fsi</Link>
+    </Compile>
+    <Compile Include="..\..\absil\ilwritepdb.fs">
+      <Link>AbsIL/ilwritepdb.fs</Link>
+    </Compile>
     <Compile Include="..\..\absil\ilwrite.fsi">
       <Link>AbsIL/ilwrite.fsi</Link>
     </Compile>
@@ -282,12 +288,6 @@
     <Compile Include="..\LexFilter.fs">
       <Link>ParserAndUntypedAST/LexFilter.fs</Link>
     </Compile>
-    <Compile Include="..\comparers.fsi">
-      <Link>TypedAST/comparers.fsi</Link>
-    </Compile>
-    <Compile Include="..\comparers.fs">
-      <Link>TypedAST/comparers.fs</Link>
-    </Compile>
     <Compile Include="..\tainted.fsi">
       <Link>TypedAST/tainted.fsi</Link>
     </Compile>
@@ -333,6 +333,15 @@
     <Compile Include="..\infos.fs">
       <Link>Logic/infos.fs</Link>
     </Compile>
+    <Compile Include="..\AccessibilityLogic.fs">
+      <Link>Logic/AccessibilityLogic.fs</Link>
+    </Compile>
+    <Compile Include="..\AttributeChecking.fs">
+      <Link>Logic/AttributeChecking.fs</Link>
+    </Compile>
+    <Compile Include="..\InfoReader.fs">
+      <Link>Logic/InfoReader.fs</Link>
+    </Compile>
     <Compile Include="..\NicePrint.fs">
       <Link>Logic/NicePrint.fs</Link>
     </Compile>
@@ -350,6 +359,15 @@
     </Compile>
     <Compile Include="..\TypeRelations.fs">
       <Link>Logic/TypeRelations.fs</Link>
+    </Compile>
+    <Compile Include="..\SignatureConformance.fs">
+      <Link>Logic/SignatureConformance.fs</Link>
+    </Compile>
+    <Compile Include="..\MethodOverrides.fs">
+      <Link>Logic/MethodOverrides.fs</Link>
+    </Compile>
+    <Compile Include="..\MethodCalls.fs">
+      <Link>Logic/MethodCalls.fs</Link>
     </Compile>
     <Compile Include="..\PatternMatchCompilation.fsi">
       <Link>Logic/PatternMatchCompilation.fsi</Link>
@@ -518,6 +536,9 @@
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="Xamarin.iOS" />
+    <Reference Include="System.Collections.Immutable">
+      <HintPath>packages\System.Collections.Immutable.1.2.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
@@ -532,6 +553,7 @@
     <None Include="..\fsi\fsi.fs">
       <Link>Service/fsi.fs</Link>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.FSharp.targets" />
 </Project>

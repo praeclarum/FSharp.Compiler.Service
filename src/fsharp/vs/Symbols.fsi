@@ -13,10 +13,11 @@ namespace Microsoft.FSharp.Compiler.SourceCodeServices
 
 open System.Collections.Generic
 open Microsoft.FSharp.Compiler
-open Microsoft.FSharp.Compiler.TcGlobals
-open Microsoft.FSharp.Compiler.Tast
-open Microsoft.FSharp.Compiler.Range
+open Microsoft.FSharp.Compiler.AccessibilityLogic
 open Microsoft.FSharp.Compiler.CompileOps
+open Microsoft.FSharp.Compiler.Range
+open Microsoft.FSharp.Compiler.Tast
+open Microsoft.FSharp.Compiler.TcGlobals
 
 module internal Impl = 
     type internal cenv = 
@@ -167,7 +168,11 @@ and [<Class>] FSharpEntity =
     /// Indicates if the entity is an array type
     member IsArrayType : bool
 
+    /// Get the rank of an array type
+    member ArrayRank : int
+
 #if EXTENSIONTYPING
+
     /// Indicates if the entity is a 'fake' symbol related to a static instantiation of a type provider
     member IsStaticInstantiation : bool
 
@@ -435,8 +440,8 @@ and [<Class>] FSharpField =
 
 /// Represents the rights of a compilation to access symbols
 and [<Class>] FSharpAccessibilityRights =
-    internal new : CcuThunk * Infos.AccessorDomain -> FSharpAccessibilityRights
-    member internal Contents : Infos.AccessorDomain
+    internal new : CcuThunk * AccessorDomain -> FSharpAccessibilityRights
+    member internal Contents : AccessorDomain
 
 /// Indicates the accessibility of a symbol, as seen by the F# language
 and [<Class>] FSharpAccessibility = 

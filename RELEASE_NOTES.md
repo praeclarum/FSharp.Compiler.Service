@@ -1,3 +1,25 @@
+#### 6.0.1
+  * [Fix ProjectFileNames order when getting project options from script](https://github.com/fsharp/FSharp.Compiler.Service/pull/594)
+
+#### 6.0.0
+  * Switch to new major version on assumption integrated F# compiler changes induce API change
+
+#### 5.0.2
+  * Integrate Microsoft\visualfsharp to 688c26bdbbfc766326fc45e4d918f87fcba1e7ba. F# 4.1 work
+
+#### 5.0.1
+* [Fixed dependencies in nuget package](https://github.com/fsharp/FSharp.Compiler.Service/pull/608)
+
+#### 5.0.0
+* Fixed empty symbol declared pdb #564 from kekyo/fix-empty-pdb
+* .NET Core ProjectCracker - updated version and dependencies
+* Properly embed 'FSIstrings' resource, fixes #591
+* make build.sh work on windows (git bash).
+* Added default script references for .NET Core
+* Store useMonoResolution flag
+* Updated MSBuild version
+* Assume FSharp.Core 4.4.0.0
+
 #### 4.0.1
 * Integrate Microsoft\visualfsharp and fsharp\fsharp to master (including portable PDB)
 * Remove .NET Framework 4.0 support (now needs .NET Framework 4.5)
