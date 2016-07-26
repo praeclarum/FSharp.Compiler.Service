@@ -139,7 +139,7 @@ module internal MSBuildResolver =
     /// The list of supported .NET Framework version numbers, using the monikers of the Reference Assemblies folder.
     let SupportedNetFrameworkVersions = set [ Net20; Net30; Net35; Net40; Net45; Net451; (*SL only*) "v5.0" ]
 
-#if __IOS__
+#if __IOS__ || __MACOS__
     let HighestInstalledNetFrameworkVersionMajorMinor() = 4, Net45
 #else
     /// Get the path to the .NET Framework implementation assemblies by using ToolLocationHelper.GetPathToDotNetFramework.
@@ -217,7 +217,7 @@ module internal MSBuildResolver =
                       
         if Array.isEmpty references then ResolutionResults.Empty else
 
-#if __IOS__
+#if __IOS__ || __MACOS__
         failwith "MSBuild Resolution not supported"
 #else
 

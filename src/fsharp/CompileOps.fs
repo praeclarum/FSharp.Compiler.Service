@@ -1642,7 +1642,7 @@ let DefaultBasicReferencesForOutOfProjectSources40 = []
 let DefaultBasicReferencesForOutOfProjectSources = 
     [ yield "System"
 
-#if !__IOS__
+#if !(__IOS__|| __MACOS__)
       yield "System.Xml" 
       yield "System.Runtime.Remoting"
       yield "System.Runtime.Serialization.Formatters.Soap"
@@ -1662,7 +1662,7 @@ let DefaultBasicReferencesForOutOfProjectSources =
           yield "System.Core" 
 
       yield "System.Runtime"
-#if !__IOS__
+#if !(__IOS__|| __MACOS__)
       yield "System.Web"
       yield "System.Web.Services"
       yield "System.Windows.Forms"
@@ -2623,7 +2623,7 @@ type TcConfig private (data : TcConfigBuilder,validate:bool) =
 
     // Check that the referenced version of FSharp.Core.dll matches the referenced version of mscorlib.dll 
     let checkFSharpBinaryCompatWithMscorlib filename (ilAssemblyRefs: ILAssemblyRef list) explicitFscoreVersionToCheckOpt m = 
-#if __IOS__
+#if __IOS__ || __MACOS__
         ()
 #else
         let isfslib = fileNameOfPath filename = GetFSharpCoreLibraryName() + ".dll"

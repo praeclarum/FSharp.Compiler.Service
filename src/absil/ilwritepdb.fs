@@ -7,8 +7,8 @@ open System.Collections.Generic
 open System.Collections.Immutable
 open System.IO
 open System.Reflection
-open System.Reflection.Metadata
 #if !FX_NO_PDB_WRITER
+open System.Reflection.Metadata
 open System.Reflection.Metadata.Ecma335
 open System.Reflection.PortableExecutable
 #endif
