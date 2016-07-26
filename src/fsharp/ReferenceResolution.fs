@@ -138,7 +138,8 @@ module internal MSBuildResolver =
 
     /// The list of supported .NET Framework version numbers, using the monikers of the Reference Assemblies folder.
     let SupportedNetFrameworkVersions = set [ Net20; Net30; Net35; Net40; Net45; Net451; (*SL only*) "v5.0" ]
-    
+
+#if !__IOS__
     /// Get the path to the .NET Framework implementation assemblies by using ToolLocationHelper.GetPathToDotNetFramework.
     /// This is only used to specify the "last resort" path for assembly resolution.
     let GetPathToDotNetFrameworkImlpementationAssemblies(v) =
@@ -194,7 +195,6 @@ module internal MSBuildResolver =
         | r when r.Length >= 10 &&  "{Registry:" = r.Substring(0,10) -> AssemblyFoldersEx
         | r -> ResolvedFrom.Path r
         
-
     /// Perform assembly resolution by instantiating the ResolveAssemblyReference task directly from the MSBuild SDK.
     let ResolveCore(resolutionEnvironment: ResolutionEnvironment,
                     references:(string*(*baggage*)string)[], 
@@ -395,3 +395,23 @@ module internal MSBuildResolver =
             referenceCopyLocalPaths = set rootedResults.referenceCopyLocalPaths |> Set.union (set unrootedResults.referenceCopyLocalPaths) |> Set.toArray 
             suggestedBindingRedirects = set rootedResults.suggestedBindingRedirects |> Set.union (set unrootedResults.suggestedBindingRedirects) |> Set.toArray 
         }
+#else
+    let Resolve(
+                resolutionEnvironment: ResolutionEnvironment,
+                references:seq<string (* baggage *) * string>,
+                targetFrameworkVersion:string,
+                targetFrameworkDirectories:string list,
+                targetProcessorArchitecture:string,
+                outputDirectory:string,
+                fsharpBinariesDir:string,
+                explicitIncludeDirs:string list,
+                implicitIncludeDir:string,
+                frameworkRegistryBase:string,
+                assemblyFoldersSuffix:string,
+                assemblyFoldersConditions:string,
+                logmessage:(string->unit),
+                logwarning:(string->string->unit),
+                logerror:(string->string->unit)) : ResolutionResults =
+        failwith "MSBuild resolution not supported on iOS"
+    let HighestInstalledNetFrameworkVersionMajorMinor() = 4, Net45
+#endif

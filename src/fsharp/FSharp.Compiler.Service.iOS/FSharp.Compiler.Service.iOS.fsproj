@@ -51,6 +51,12 @@
     <Compile Include="Microsoft.Build.fs" />
     <Compile Include="FSComp.fs" />
     <Compile Include="FSIstrings.fs" />
+    <Compile Include="..\..\utils\reshapedreflection.fs">
+      <Link>Reshaped/reshapedreflection.fs</Link>
+    </Compile>
+    <Compile Include="..\..\utils\reshapedmsbuild.fs">
+      <Link>Reshaped/reshapedmsbuild.fs</Link>
+    </Compile>
     <Compile Include="..\..\utils\sformat.fsi">
       <Link>ErrorText/sformat.fsi</Link>
     </Compile>
@@ -161,6 +167,9 @@
     </Compile>
     <Compile Include="..\ErrorLogger.fs">
       <Link>ErrorLogging/ErrorLogger.fs</Link>
+    </Compile>
+    <Compile Include="..\ReferenceResolution.fsi">
+      <Link>ReferenceResolution/ReferenceResolution.fsi</Link>
     </Compile>
     <Compile Include="..\ReferenceResolution.fs">
       <Link>ReferenceResolution/ReferenceResolution.fs</Link>
@@ -305,6 +314,12 @@
     </Compile>
     <Compile Include="..\QuotationPickler.fs">
       <Link>TypedAST/QuotationPickler.fs</Link>
+    </Compile>
+    <Compile Include="..\comparers.fsi">
+      <Link>TypedAST/comparers.fsi</Link>
+    </Compile>
+    <Compile Include="..\comparers.fs">
+      <Link>TypedAST/comparers.fs</Link>
     </Compile>
     <Compile Include="..\tast.fs">
       <Link>TypedAST/tast.fs</Link>
@@ -542,6 +557,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources\" />
+    <Folder Include="ReferenceResolution\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\absil\ilreflect.fs">

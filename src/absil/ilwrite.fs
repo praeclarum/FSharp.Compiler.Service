@@ -12,10 +12,7 @@ open Microsoft.FSharp.Compiler.AbstractIL.Internal
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.BinaryConstants 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Support 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library 
-
-#if !FX_NO_PDB_WRITER
 open Microsoft.FSharp.Compiler.AbstractIL.ILPdbWriter
-#endif
 
 #if FX_NO_CORHOST_SIGNER && !NO_STRONG_NAMES
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.StrongNameSign

@@ -112,10 +112,10 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="undefinedNameNamespace" xml:space="preserve">
     <value>The namespace '{0}' is not defined</value>
@@ -141,11 +141,17 @@
   <data name="undefinedNameType" xml:space="preserve">
     <value>The type '{0}' is not defined</value>
   </data>
+  <data name="undefinedNameTypeIn" xml:space="preserve">
+    <value>The type '{0}' is not defined in '{1}'.</value>
+  </data>
   <data name="undefinedNameRecordLabelOrNamespace" xml:space="preserve">
     <value>The record label or namespace '{0}' is not defined</value>
   </data>
   <data name="undefinedNameRecordLabel" xml:space="preserve">
-    <value>The record label '{0}' is not defined</value>
+    <value>The record label '{0}' is not defined.</value>
+  </data>
+  <data name="undefinedNameRecordLabelDetails" xml:space="preserve">
+    <value>Maybe you want one of the following:</value>
   </data>
   <data name="undefinedNameTypeParameter" xml:space="preserve">
     <value>The type parameter '{0}' is not defined</value>
@@ -153,8 +159,26 @@
   <data name="undefinedNamePatternDiscriminator" xml:space="preserve">
     <value>The pattern discriminator '{0}' is not defined</value>
   </data>
+  <data name="missingElseBranch" xml:space="preserve">
+    <value>The 'if' expression is missing an 'else' branch. The 'then' branch has type '{0}'. Because 'if' is an expression, and not a statement, add an 'else' branch which returns a value of the same type.</value>
+  </data>
+  <data name="elseBranchHasWrongType" xml:space="preserve">
+    <value>All branches of an 'if' expression must return the same type. This expression was expected to have type '{0}' but here has type '{1}'.</value>
+  </data>
+  <data name="commaInsteadOfSemicolonInRecord" xml:space="preserve">
+    <value>A ';' is used to separate field values in records. Consider replacing ',' with ';'.</value>
+  </data>
+  <data name="derefInsteadOfNot" xml:space="preserve">
+    <value>The '!' operator is used to dereference a ref cell. Consider using 'not expr' here.</value>
+  </data>
   <data name="buildUnexpectedTypeArgs" xml:space="preserve">
     <value>The non-generic type '{0}' does not expect any type arguments, but here is given {1} type argument(s)</value>
+  </data>
+  <data name="returnUsedInsteadOfReturnBang" xml:space="preserve">
+    <value>Consider using 'return!' instead of 'return'.</value>
+  </data>
+  <data name="yieldUsedInsteadOfYieldBang" xml:space="preserve">
+    <value>Consider using 'yield!' instead of 'yield'.</value>
   </data>
   <data name="buildInvalidWarningNumber" xml:space="preserve">
     <value>Invalid warning number '{0}'</value>
@@ -166,16 +190,13 @@
     <value>Invalid version file '{0}'</value>
   </data>
   <data name="buildProductName" xml:space="preserve">
-    <value>F# Compiler for F# 4.0 {0}</value>
+    <value>F# Compiler for F# {0}</value>
   </data>
   <data name="buildProblemWithFilename" xml:space="preserve">
     <value>Problem with filename '{0}': {1}</value>
   </data>
   <data name="buildNoInputsSpecified" xml:space="preserve">
     <value>No inputs specified</value>
-  </data>
-  <data name="buildMismatchOutputExtension" xml:space="preserve">
-    <value>The output name extension doesn't match the options used. If '-a' or '--target:library' is used the output file name must end with '.dll', if '--target:module' is used the output extension must be '.netmodule', otherwise '.exe'.</value>
   </data>
   <data name="buildPdbRequiresDebug" xml:space="preserve">
     <value>The '--pdb' option requires the '--debug' option to be used</value>
@@ -221,6 +242,9 @@
   </data>
   <data name="buildMultiFileRequiresNamespaceOrModule" xml:space="preserve">
     <value>Files in libraries or multiple-file applications must begin with a namespace or module declaration, e.g. 'namespace SomeNamespace.SubNamespace' or 'module SomeNamespace.SomeModule'. Only the last source file of an application may omit such a declaration.</value>
+  </data>
+  <data name="noEqualSignAfterModule" xml:space="preserve">
+    <value>Files in libraries or multiple-file applications must begin with a namespace or module declaration. When using a module declaration at the start of a file the '=' sign is not allowed. If this is a top-level module, consider removing the = to resolve this error.</value>
   </data>
   <data name="buildMultipleToplevelModules" xml:space="preserve">
     <value>This file contains multiple declarations of the form 'module SomeNamespace.SomeModule'. Only one declaration of this form is permitted in a file. Change your file to use an initial namespace declaration and/or use 'module ModuleName = ...' to define your modules.</value>
@@ -757,7 +781,7 @@
     <value>The 'l' or 'L' in this format specifier is unnecessary. In F# code you can use %d, %x, %o or %u instead, which are overloaded to work with all basic integer types.</value>
   </data>
   <data name="forHIsUnnecessary" xml:space="preserve">
-    <value>The 'h' or 'H' in this format specifier is unnecessary. You can use %d, %x, %o or %u instead, which are overloaded to work with all basic integer types..</value>
+    <value>The 'h' or 'H' in this format specifier is unnecessary. You can use %d, %x, %o or %u instead, which are overloaded to work with all basic integer types.</value>
   </data>
   <data name="forDoesNotSupportPrefixFlag" xml:space="preserve">
     <value>'{0}' does not support prefix '{1}' flag</value>
@@ -850,7 +874,7 @@
     <value>[&lt;ReflectedDefinition&gt;] terms cannot contain uses of the prefix splice operator '%'</value>
   </data>
   <data name="chkEntryPointUsage" xml:space="preserve">
-    <value>A function labeled with the 'EntryPointAttribute' attribute must be the last declaration in the last file in the compilation sequence, and can only be used when compiling to a .exe</value>
+    <value>A function labeled with the 'EntryPointAttribute' attribute must be the last declaration in the last file in the compilation sequence.</value>
   </data>
   <data name="chkUnionCaseCompiledForm" xml:space="preserve">
     <value>compiled form of the union case</value>
@@ -880,7 +904,7 @@
     <value>The method '{0}' has curried arguments but has the same name as another method in this type. Methods with curried arguments cannot be overloaded. Consider using a method taking tupled arguments.</value>
   </data>
   <data name="chkCurriedMethodsCantHaveOutParams" xml:space="preserve">
-    <value>Methods with curried arguments cannot declare 'out', 'ParamArray', 'optional', 'ReflectedDefinition' or 'byref' arguments</value>
+    <value>Methods with curried arguments cannot declare 'out', 'ParamArray', 'optional', 'ReflectedDefinition', 'byref', 'CallerLineNumber', 'CallerMemberName', or 'CallerFilePath' arguments</value>
   </data>
   <data name="chkDuplicateProperty" xml:space="preserve">
     <value>Duplicate property. The property '{0}' has the same name and signature as another property in this type.</value>
@@ -1341,8 +1365,8 @@
   <data name="parsErrorInReturnForLetIncorrectIndentation" xml:space="preserve">
     <value>Error in the return expression for this 'let'. Possible incorrect indentation.</value>
   </data>
-  <data name="parsExpectedStatementAfterLet" xml:space="preserve">
-    <value>Block following this '{0}' is unfinished. Expect an expression.</value>
+  <data name="parsExpectedExpressionAfterLet" xml:space="preserve">
+    <value>The block following this '{0}' is unfinished. Every code block is an expression and must have a result. '{1}' cannot be the final code element in a block. Consider giving this block an explicit result.</value>
   </data>
   <data name="parsIncompleteIf" xml:space="preserve">
     <value>Incomplete conditional. Expected 'if &lt;expr&gt; then &lt;expr&gt;' or 'if &lt;expr&gt; then &lt;expr&gt; else &lt;expr&gt;'.</value>
@@ -1477,7 +1501,7 @@
     <value>Namespaces cannot contain values. Consider using a module to hold your value declarations.</value>
   </data>
   <data name="tcNamespaceCannotContainExtensionMembers" xml:space="preserve">
-    <value>Namespaces cannot contain extension members except in the same file and namespace where the type is defined. Consider using a module to hold declarations of extension members.</value>
+    <value>Namespaces cannot contain extension members except in the same file and namespace declaration group where the type is defined. Consider using a module to hold declarations of extension members.</value>
   </data>
   <data name="tcMultipleVisibilityAttributes" xml:space="preserve">
     <value>Multiple visibility attributes have been specified for this identifier</value>
@@ -2161,7 +2185,7 @@
     <value>Only simple variable patterns can be bound in 'let rec' constructs</value>
   </data>
   <data name="tcOnlyRecordFieldsAndSimpleLetCanBeMutable" xml:space="preserve">
-    <value>Only record fields and simple 'let' bindings may be marked mutable</value>
+    <value>Only record fields and simple, non-recursive 'let' bindings may be marked mutable</value>
   </data>
   <data name="tcMemberIsNotSufficientlyGeneric" xml:space="preserve">
     <value>This member is not sufficiently generic</value>
@@ -2526,6 +2550,9 @@
   <data name="optsDelaySign" xml:space="preserve">
     <value>Delay-sign the assembly using only the public portion of the strong name key</value>
   </data>
+  <data name="optsPublicSign" xml:space="preserve">
+    <value>Public-sign the assembly using only the public portion of the strong name key, and mark the assembly as signed</value>
+  </data>
   <data name="optsWriteXml" xml:space="preserve">
     <value>Write the xmldoc of the assembly to the given file</value>
   </data>
@@ -2569,7 +2596,7 @@
     <value>Emit debug information (Short form: -g)</value>
   </data>
   <data name="optsDebug" xml:space="preserve">
-    <value>Specify debugging type: full, pdbonly. ('full' is the default and enables attaching a debugger to a running program).</value>
+    <value>Specify debugging type: full, portable, pdbonly. ('{0}' is the default if no debuggging type specified and enables attaching a debugger to a running program. 'portable' is a cross-platform format).</value>
   </data>
   <data name="optsOptimize" xml:space="preserve">
     <value>Enable optimizations (Short form: -O)</value>
@@ -2609,6 +2636,9 @@
   </data>
   <data name="optsHelp" xml:space="preserve">
     <value>Display this usage message (Short form: -?)</value>
+  </data>
+  <data name="optsResponseFile" xml:space="preserve">
+    <value>Read response file for more options</value>
   </data>
   <data name="optsCodepage" xml:space="preserve">
     <value>Specify the codepage used to read source files</value>
@@ -2717,6 +2747,12 @@
   </data>
   <data name="optsEmitDebugInfoInQuotations" xml:space="preserve">
     <value>Emit debug information in quotations</value>
+  </data>
+  <data name="optsPreferredUiLang" xml:space="preserve">
+    <value> Specify the preferred output language culture name (e.g. es-ES, ja-JP)</value>
+  </data>
+  <data name="optsNoCopyFsharpCore" xml:space="preserve">
+    <value>Don't copy FSharp.Core.dll along the produced binaries</value>
   </data>
   <data name="optsInvalidSubSystemVersion" xml:space="preserve">
     <value>Invalid version '{0}' for '--subsystemversion'. The version must be 4.00 or greater.</value>
@@ -2916,6 +2952,9 @@
   <data name="nrTypeDoesNotContainSuchField" xml:space="preserve">
     <value>The type '{0}' does not contain a field '{1}'</value>
   </data>
+  <data name="nrRecordDoesNotContainSuchLabel" xml:space="preserve">
+    <value>The record type '{0}' does not contain a label '{1}'.</value>
+  </data>
   <data name="nrInvalidFieldLabel" xml:space="preserve">
     <value>Invalid field label</value>
   </data>
@@ -2992,7 +3031,7 @@
     <value>This number is outside the allowable range for 32-bit floats</value>
   </data>
   <data name="lexInvalidNumericLiteral" xml:space="preserve">
-    <value>This is not a valid numeric literal. Sample formats include 4, 0x4, 0b0100, 4L, 4UL, 4u, 4s, 4us, 4y, 4uy, 4.0, 4.0f, 4I.</value>
+    <value>This is not a valid numeric literal. Valid numeric literals include 1, 0x1, 0b0001 (int), 1u (uint32), 1L (int64), 1UL (uint64), 1s (int16), 1y (sbyte), 1uy (byte), 1.0 (float), 1.0f (float32), 1.0m (decimal), 1I (BigInteger).</value>
   </data>
   <data name="lexInvalidByteLiteral" xml:space="preserve">
     <value>This is not a valid byte literal</value>
@@ -3245,6 +3284,45 @@
   </data>
   <data name="lexInvalidUnicodeLiteral" xml:space="preserve">
     <value>\U{0} is not a valid Unicode character escape sequence</value>
+  </data>
+  <data name="tcCallerInfoWrongType" xml:space="preserve">
+    <value>'{0}' must be applied to an argument of type '{1}', but has been applied to an argument of type '{2}'</value>
+  </data>
+  <data name="tcCallerInfoNotOptional" xml:space="preserve">
+    <value>'{0}' can only be applied to optional arguments</value>
+  </data>
+  <data name="toolLocationHelperUnsupportedFrameworkVersion" xml:space="preserve">
+    <value>The specified .NET Framework version "{0}" is not supported. Please specify a value from the enumeration Microsoft.Build.Utilities.TargetDotNetFrameworkVersion.</value>
+  </data>
+  <data name="ilSignInvalidMagicValue" xml:space="preserve">
+    <value>Invalid Magic value in CLR Header</value>
+  </data>
+  <data name="ilSignBadImageFormat" xml:space="preserve">
+    <value>Bad image format</value>
+  </data>
+  <data name="ilSignPrivateKeyExpected" xml:space="preserve">
+    <value>Private key expected</value>
+  </data>
+  <data name="ilSignRsaKeyExpected" xml:space="preserve">
+    <value>RSA key expected</value>
+  </data>
+  <data name="ilSignInvalidBitLen" xml:space="preserve">
+    <value>Invalid bit Length</value>
+  </data>
+  <data name="ilSignInvalidRSAParams" xml:space="preserve">
+    <value>Invalid RSAParameters structure - '{{0}}' expected</value>
+  </data>
+  <data name="ilSignInvalidAlgId" xml:space="preserve">
+    <value>Invalid algId - 'Exponent' expected</value>
+  </data>
+  <data name="ilSignInvalidSignatureSize" xml:space="preserve">
+    <value>Invalid signature size</value>
+  </data>
+  <data name="ilSignNoSignatureDirectory" xml:space="preserve">
+    <value>No signature directory</value>
+  </data>
+  <data name="ilSignInvalidPKBlob" xml:space="preserve">
+    <value>Invalid Public Key blob</value>
   </data>
   <data name="fscTooManyErrors" xml:space="preserve">
     <value>Exiting - too many errors</value>
@@ -3845,5 +3923,62 @@
   </data>
   <data name="checkLowercaseLiteralBindingInPattern" xml:space="preserve">
     <value>Lowercase literal '{0}' is being shadowed by a new pattern with the same name. Only uppercase and module-prefixed literals can be used as named patterns.</value>
+  </data>
+  <data name="tcLiteralDoesNotTakeArguments" xml:space="preserve">
+    <value>This literal pattern does not take arguments</value>
+  </data>
+  <data name="tcConstructorsIllegalInAugmentation" xml:space="preserve">
+    <value>Constructors are not permitted as extension members - they must be defined as part of the original definition of the type</value>
+  </data>
+  <data name="optsInvalidResponseFile" xml:space="preserve">
+    <value>Invalid response file '{0}' ( '{1}' )</value>
+  </data>
+  <data name="optsResponseFileNotFound" xml:space="preserve">
+    <value>Response file '{0}' not found in '{1}'</value>
+  </data>
+  <data name="optsResponseFileNameInvalid" xml:space="preserve">
+    <value>Response file name '{0}' is empty, contains invalid characters, has a drive specification without an absolute path, or is too long</value>
+  </data>
+  <data name="fsharpCoreNotFoundToBeCopied" xml:space="preserve">
+    <value>Cannot find FSharp.Core.dll in compiler's directory</value>
+  </data>
+  <data name="etMissingStaticArgumentsToMethod" xml:space="preserve">
+    <value>This provided method requires static parameters</value>
+  </data>
+  <data name="considerUpcast" xml:space="preserve">
+    <value>The conversion from {0} to {1} is a compile-time safe upcast, not a downcast. Consider using 'upcast' instead of 'downcast'.</value>
+  </data>
+  <data name="considerUpcastOperator" xml:space="preserve">
+    <value>The conversion from {0} to {1} is a compile-time safe upcast, not a downcast. Consider using the :&gt; (upcast) operator instead of the :?&gt; (downcast) operator.</value>
+  </data>
+  <data name="tcRecImplied" xml:space="preserve">
+    <value>The 'rec' on this module is implied by an outer 'rec' declaration and is being ignored</value>
+  </data>
+  <data name="tcOpenFirstInMutRec" xml:space="preserve">
+    <value>In a recursive declaration group, 'open' declarations must come first in each module</value>
+  </data>
+  <data name="tcModuleAbbrevFirstInMutRec" xml:space="preserve">
+    <value>In a recursive declaration group, module abbreviations must come after all 'open' declarations and before other declarations</value>
+  </data>
+  <data name="tcUnsupportedMutRecDecl" xml:space="preserve">
+    <value>This declaration is not supported in recursive declaration groups</value>
+  </data>
+  <data name="parsInvalidUseOfRec" xml:space="preserve">
+    <value>Invalid use of 'rec' keyword</value>
+  </data>
+  <data name="tcStructUnionMultiCase" xml:space="preserve">
+    <value>A union type which is a struct must have only one case.</value>
+  </data>
+  <data name="tcUseMayNotBeMutable" xml:space="preserve">
+    <value>This feature is deprecated. A 'use' binding may not be marked 'mutable'.</value>
+  </data>
+  <data name="CallerMemberNameIsOverriden" xml:space="preserve">
+    <value>The CallerMemberNameAttribute applied to parameter '{0}' will have no effect. It is overridden by the CallerFilePathAttribute.</value>
+  </data>
+  <data name="tcFixedNotAllowed" xml:space="preserve">
+    <value>Invalid use of 'fixed'. 'fixed' may only be used in a declaration of the form 'use x = fixed expr' where the expression is an array, the address of a field, the address of an array element or a string'</value>
+  </data>
+  <data name="tcCouldNotFindOffsetToStringData" xml:space="preserve">
+    <value>Could not find method System.Runtime.CompilerServices.OffsetToStringData in references when building 'fixed' expression.</value>
   </data>
 </root>

@@ -199,10 +199,11 @@ let fixupOverlappingSequencePoints fixupSPs showTimes methods =
         Array.sortInPlaceBy fst allSps
     spCounts, allSps
 
-let writePortablePdbInfo (fixupSPs:bool) showTimes fpdb (info:PdbData) = 
+let writePortablePdbInfo (fixupSPs:bool) (showTimes : bool) fpdb (info:PdbData) : idd = 
     try FileSystem.FileDelete fpdb with _ -> ()
 
 #if FX_NO_PDB_WRITER
+    failwith "No PDB Writer"
 #else
     sortMethods showTimes info
     let _spCounts, _allSps = fixupOverlappingSequencePoints fixupSPs showTimes info.Methods

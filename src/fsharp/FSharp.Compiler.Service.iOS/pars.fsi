@@ -15,6 +15,7 @@ type token =
   | EOF of (Ast.LexerWhitespaceContinuation)
   | LEX_FAILURE of (string)
   | ODUMMY of (token)
+  | FIXED
   | OINTERFACE_MEMBER
   | OBLOCKEND
   | OBLOCKEND_COMING_SOON
@@ -208,6 +209,7 @@ type tokenId =
     | TOKEN_EOF
     | TOKEN_LEX_FAILURE
     | TOKEN_ODUMMY
+    | TOKEN_FIXED
     | TOKEN_OINTERFACE_MEMBER
     | TOKEN_OBLOCKEND
     | TOKEN_OBLOCKEND_COMING_SOON

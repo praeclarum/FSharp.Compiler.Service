@@ -11,15 +11,13 @@ open Microsoft.FSharp.Compiler.AbstractIL
 open Microsoft.FSharp.Compiler.AbstractIL.Internal 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.Library
 
-open Microsoft.FSharp.Compiler.AbstractIL.Diagnostics 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.AsciiParser 
 open Microsoft.FSharp.Compiler.AbstractIL.Internal.AsciiConstants 
 
 
 let lexeme (lexbuf : LexBuffer<char>) = new System.String(lexbuf.Lexeme)
 
-let unexpectedChar lexbuf =
-  dprintf "Unexpected character '%s'" (lexeme lexbuf);
+let unexpectedChar _lexbuf =
   raise Parsing.RecoverableParseError ;;
 
 // -------------------------------------------------------------------- 
@@ -91,7 +89,7 @@ let eval = function
 let kwdOrInstrOrId s = if (Lazy.force kwdInstrTable).ContainsKey s  then kwdOrInstr s else VAL_ID s
         
 
-# 94 "illex.fs"
+# 92 "illex.fs"
 let trans : uint16[] array = 
     [| 
     (* State 0 *)
@@ -378,153 +376,153 @@ and token  (lexbuf : Internal.Utilities.Text.Lexing.LexBuffer<_>) = _fslex_token
 and _fslex_token  _fslex_state lexbuf =
   match _fslex_tables.Interpret(_fslex_state,lexbuf) with
   | 0 -> ( 
-# 100 "../../absil/illex.fsl"
+# 98 "../../absil/illex.fsl"
                          COMMA 
-# 383 "illex.fs"
+# 381 "illex.fs"
           )
   | 1 -> ( 
-# 101 "../../absil/illex.fsl"
+# 99 "../../absil/illex.fsl"
                          DOT 
-# 388 "illex.fs"
+# 386 "illex.fs"
           )
   | 2 -> ( 
-# 102 "../../absil/illex.fsl"
+# 100 "../../absil/illex.fsl"
                          STAR 
-# 393 "illex.fs"
+# 391 "illex.fs"
           )
   | 3 -> ( 
-# 103 "../../absil/illex.fsl"
+# 101 "../../absil/illex.fsl"
                          BANG 
-# 398 "illex.fs"
+# 396 "illex.fs"
           )
   | 4 -> ( 
-# 104 "../../absil/illex.fsl"
+# 102 "../../absil/illex.fsl"
                          AMP 
-# 403 "illex.fs"
+# 401 "illex.fs"
           )
   | 5 -> ( 
-# 105 "../../absil/illex.fsl"
+# 103 "../../absil/illex.fsl"
                          LPAREN 
-# 408 "illex.fs"
+# 406 "illex.fs"
           )
   | 6 -> ( 
-# 106 "../../absil/illex.fsl"
+# 104 "../../absil/illex.fsl"
                          RPAREN 
-# 413 "illex.fs"
+# 411 "illex.fs"
           )
   | 7 -> ( 
-# 107 "../../absil/illex.fsl"
+# 105 "../../absil/illex.fsl"
                          LBRACK 
-# 418 "illex.fs"
+# 416 "illex.fs"
           )
   | 8 -> ( 
-# 108 "../../absil/illex.fsl"
+# 106 "../../absil/illex.fsl"
                          RBRACK 
-# 423 "illex.fs"
+# 421 "illex.fs"
           )
   | 9 -> ( 
-# 109 "../../absil/illex.fsl"
+# 107 "../../absil/illex.fsl"
                          SLASH 
-# 428 "illex.fs"
+# 426 "illex.fs"
           )
   | 10 -> ( 
-# 110 "../../absil/illex.fsl"
+# 108 "../../absil/illex.fsl"
                          LESS 
-# 433 "illex.fs"
+# 431 "illex.fs"
           )
   | 11 -> ( 
-# 111 "../../absil/illex.fsl"
+# 109 "../../absil/illex.fsl"
                          GREATER 
-# 438 "illex.fs"
+# 436 "illex.fs"
           )
   | 12 -> ( 
-# 112 "../../absil/illex.fsl"
+# 110 "../../absil/illex.fsl"
                            ELIPSES 
-# 443 "illex.fs"
+# 441 "illex.fs"
           )
   | 13 -> ( 
-# 113 "../../absil/illex.fsl"
+# 111 "../../absil/illex.fsl"
                           DCOLON 
-# 448 "illex.fs"
+# 446 "illex.fs"
           )
   | 14 -> ( 
-# 114 "../../absil/illex.fsl"
+# 112 "../../absil/illex.fsl"
                          PLUS 
-# 453 "illex.fs"
+# 451 "illex.fs"
           )
   | 15 -> ( 
-# 116 "../../absil/illex.fsl"
+# 114 "../../absil/illex.fsl"
                         VAL_INT64(int64(lexeme lexbuf)) 
-# 458 "illex.fs"
+# 456 "illex.fs"
           )
   | 16 -> ( 
-# 125 "../../absil/illex.fsl"
+# 123 "../../absil/illex.fsl"
                         let b = lexeme lexbuf in 
                         VAL_INT32_ELIPSES(int32(String.sub b  0 (String.length b - 3))) 
-# 464 "illex.fs"
+# 462 "illex.fs"
           )
   | 17 -> ( 
-# 128 "../../absil/illex.fsl"
+# 126 "../../absil/illex.fsl"
                        let c1 = String.get (lexeme lexbuf) 0 in 
                        let c2 = String.get (lexeme lexbuf) 1 in 
                        if c1 >= '0' && c1 <= '9' && c2 >= '0' && c2 <= '9' then 
                          VAL_INT64(int64 (10*eval c1 + eval c2) )
                        else VAL_ID(lexeme lexbuf) 
-# 473 "illex.fs"
+# 471 "illex.fs"
           )
   | 18 -> ( 
-# 134 "../../absil/illex.fsl"
+# 132 "../../absil/illex.fsl"
                        VAL_INT64(int64(lexeme lexbuf)) 
-# 478 "illex.fs"
+# 476 "illex.fs"
           )
   | 19 -> ( 
-# 136 "../../absil/illex.fsl"
+# 134 "../../absil/illex.fsl"
                        let c1 = (lexeme lexbuf).[6] in 
                        let c2 = (lexeme lexbuf).[7] in 
                        if c1 >= '0' && c1 <= '9' && c2 >= '0' && c2 <= '9' then 
                          VAL_INT64(int64 (10*eval c1 + eval c2)) 
                        else VAL_ID(lexeme lexbuf) 
-# 487 "illex.fs"
+# 485 "illex.fs"
           )
   | 20 -> ( 
-# 143 "../../absil/illex.fsl"
+# 141 "../../absil/illex.fsl"
                        VAL_INT64(int64(lexeme lexbuf)) 
-# 492 "illex.fs"
+# 490 "illex.fs"
           )
   | 21 -> ( 
-# 145 "../../absil/illex.fsl"
+# 143 "../../absil/illex.fsl"
                        VAL_FLOAT64( (float (lexeme lexbuf)) ) 
-# 497 "illex.fs"
+# 495 "illex.fs"
           )
   | 22 -> ( 
-# 148 "../../absil/illex.fsl"
+# 146 "../../absil/illex.fsl"
                        let s = (lexeme lexbuf) in kwdOrInstr s 
-# 502 "illex.fs"
+# 500 "illex.fs"
           )
   | 23 -> ( 
-# 150 "../../absil/illex.fsl"
+# 148 "../../absil/illex.fsl"
                        kwdOrInstrOrId (lexeme lexbuf) 
-# 507 "illex.fs"
+# 505 "illex.fs"
           )
   | 24 -> ( 
-# 153 "../../absil/illex.fsl"
+# 151 "../../absil/illex.fsl"
                        VAL_DOTTEDNAME(lexeme lexbuf) 
-# 512 "illex.fs"
+# 510 "illex.fs"
           )
   | 25 -> ( 
-# 156 "../../absil/illex.fsl"
+# 154 "../../absil/illex.fsl"
                        token lexbuf 
-# 517 "illex.fs"
+# 515 "illex.fs"
           )
   | 26 -> ( 
-# 158 "../../absil/illex.fsl"
+# 156 "../../absil/illex.fsl"
                        unexpectedChar lexbuf 
-# 522 "illex.fs"
+# 520 "illex.fs"
           )
   | 27 -> ( 
-# 160 "../../absil/illex.fsl"
+# 158 "../../absil/illex.fsl"
                        EOF 
-# 527 "illex.fs"
+# 525 "illex.fs"
           )
   | _ -> failwith "token"
 

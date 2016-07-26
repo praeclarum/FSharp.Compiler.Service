@@ -384,7 +384,11 @@ type FSharpMethodGroup( name: string, unsortedMethods: FSharpMethodGroupItem[] )
                           description = FSharpToolTipText [FormatDescriptionOfItem true infoReader m denv item],
                           typeText = FormatReturnTypeOfItem infoReader m denv item,
                           parameters = (Params.ParamsOfItem infoReader m denv item |> Array.ofList),
+#if EXTENSIONTYPING
                           hasParameters = (match item with Params.ItemIsProvidedTypeWithStaticArguments m g _ -> false | _ -> true),
+#else
+                          hasParameters = true,
+#endif
                           staticParameters = Params.StaticParamsOfItem infoReader m denv item
                         ))
 #if FX_ATLEAST_40
@@ -2859,7 +2863,7 @@ type FSharpChecker(projectCacheSize, keepAssemblyContents, keepAllBackgroundReso
     member ic.MaxMemory with get() = maxMB and set v = maxMB <- v
 
     member bc.ParseFile(filename, source, options) = 
-        bc.ParseFileInProject(filename, source, options) 
+        bc.ParseFileInProject(filename, source, options, CancellationToken.None) 
         |> Async.RunSynchronously
 
     static member Instance = globalInstance
